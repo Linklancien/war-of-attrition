@@ -31,6 +31,8 @@ mut:
 	playing bool
 	// for the main menu
 	// for the game
+	player_id_turn    int
+	in_waiting_screen bool
 }
 
 fn main() {
@@ -66,6 +68,26 @@ fn main() {
 			is_visible:     start_is_visible
 			is_actionnable: start_is_actionnable
 		},
+		Bouton{
+			text:           'START TURN'
+			pos:            Vec2[f32]{
+				x: app.ctx.width / 2
+				y: app.ctx.height / 2 + 32
+			}
+			fonction:       start_turn
+			is_visible:     start_turn_is_visible
+			is_actionnable: start_turn_is_actionnable
+		},
+		Bouton{
+			text:           'END TURN'
+			pos:            Vec2[f32]{
+				x: app.ctx.width/2
+				y: app.ctx.height/2 - 32
+			}
+			fonction:       end_turn
+			is_visible:     end_turn_is_visible
+			is_actionnable: end_turn_is_actionnable
+		},
 	]
 
 	app.opt.init()
@@ -83,6 +105,9 @@ fn on_frame(mut app App) {
 	app.opt.settings_render(app)
 	playint.boutons_draw(mut app)
 	if app.playing {
+		if app.in_waiting_screen{
+			waiting_screen_render(app)
+		}
 	} else {
 		main_menu_render(app)
 	}
@@ -135,10 +160,23 @@ fn draw_players_names(app App, transparence u8) {
 	}
 }
 
+// waiting screen
+fn waiting_screen_render(app App){
+	mut transparence := u8(255)
+	if app.changing_options {
+		transparence = 150
+	}
+	txt := app.player_liste[app.player_id_turn]
+	playint.text_rect_render(app.ctx, app.text_cfg, app.ctx.width / 2, app.ctx.height / 2,
+		true, true, txt, transparence)
+}
+
 // games fn:
+// start
 fn game_start(mut app Appli) {
 	if mut app is App {
 		app.playing = true
+		app.in_waiting_screen = true
 	}
 }
 
@@ -152,6 +190,53 @@ fn start_is_visible(mut app Appli) bool {
 fn start_is_actionnable(mut app Appli) bool {
 	if mut app is App {
 		return !app.playing && !app.changing_options
+	}
+	return false
+}
+
+// start turn
+fn start_turn(mut app Appli) {
+	if mut app is App {
+		app.in_waiting_screen = false
+	}
+}
+
+fn start_turn_is_visible(mut app Appli) bool {
+	if mut app is App {
+		return app.playing && app.in_waiting_screen
+	}
+	return false
+}
+
+fn start_turn_is_actionnable(mut app Appli) bool {
+	if mut app is App {
+		return app.playing && app.in_waiting_screen && !app.changing_options
+	}
+	return false
+}
+
+// end turn
+fn end_turn(mut app Appli) {
+	if mut app is App {
+		if app.player_id_turn == 0 {
+			app.player_id_turn = app.player_liste.len - 1
+		} else {
+			app.player_id_turn -= 1
+		}
+		app.in_waiting_screen = true
+	}
+}
+
+fn end_turn_is_visible(mut app Appli) bool {
+	if mut app is App {
+		return app.playing && !app.in_waiting_screen
+	}
+	return false
+}
+
+fn end_turn_is_actionnable(mut app Appli) bool {
+	if mut app is App {
+		return app.playing && !app.in_waiting_screen && !app.changing_options
 	}
 	return false
 }
