@@ -1,6 +1,6 @@
 module main
 
-import linklancien.playint {Appli, Bouton}
+import linklancien.playint { Appli, Bouton }
 import os
 import gg
 import gx
@@ -21,7 +21,6 @@ mut:
 
 	changing_options bool
 	mouse_pos        Vec2[f32]
-
 
 	boutons_liste []Bouton
 
@@ -58,13 +57,13 @@ fn main() {
 
 	app.boutons_liste << [
 		Bouton{
-			text:     'START'
-			pos:      Vec2[f32]{
+			text:           'START'
+			pos:            Vec2[f32]{
 				x: app.ctx.width / 2
-				y: app.ctx.height / 2 + 30
+				y: app.ctx.height / 2 + 32
 			}
-			fonction: game_start
-			is_visible: start_is_visible
+			fonction:       game_start
+			is_visible:     start_is_visible
 			is_actionnable: start_is_actionnable
 		},
 	]
@@ -83,7 +82,10 @@ fn on_frame(mut app App) {
 	app.ctx.begin()
 	app.opt.settings_render(app)
 	playint.boutons_draw(mut app)
-	main_menu_render(app)
+	if app.playing {
+	} else {
+		main_menu_render(app)
+	}
 	app.ctx.end()
 }
 
@@ -118,41 +120,37 @@ fn on_resized(e &gg.Event, mut app App) {
 fn main_menu_render(app App) {
 	// Main title
 	mut transparence := u8(255)
-	if app.changing_options{
+	if app.changing_options {
 		transparence = 150
 	}
 	playint.text_rect_render(app.ctx, app.text_cfg, app.ctx.width / 2, app.ctx.height / 2,
 		true, true, 'War of Attrition', transparence)
-	app.ctx.draw_circle_filled(app.ctx.width / 2, app.ctx.height / 2,
-					5, gx.red)
-	app.ctx.draw_circle_filled(app.ctx.width / 2, app.ctx.height / 2 + 30,
-					5, gx.red)
 	draw_players_names(app, transparence)
 }
 
 fn draw_players_names(app App, transparence u8) {
 	for player_id in 0 .. app.player_liste.len {
-		playint.text_rect_render(app.ctx, app.text_cfg, 0, player_id * 40, false, false, app.player_liste[player_id],
-			transparence)
+		playint.text_rect_render(app.ctx, app.text_cfg, 0, player_id * app.text_cfg.size * 2,
+			false, false, app.player_liste[player_id], transparence)
 	}
 }
 
 // games fn:
 fn game_start(mut app Appli) {
-	if mut app is App{
+	if mut app is App {
 		app.playing = true
 	}
 }
 
-fn start_is_visible (mut app Appli) bool{
-	if mut app is App{
+fn start_is_visible(mut app Appli) bool {
+	if mut app is App {
 		return !app.playing
 	}
 	return false
 }
 
-fn start_is_actionnable (mut app Appli) bool{
-	if mut app is App{
+fn start_is_actionnable(mut app Appli) bool {
+	if mut app is App {
 		return !app.playing && !app.changing_options
 	}
 	return false
