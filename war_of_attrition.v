@@ -81,8 +81,8 @@ fn main() {
 		Bouton{
 			text:           'END TURN'
 			pos:            Vec2[f32]{
-				x: app.ctx.width/2
-				y: app.ctx.height/2 - 32
+				x: app.ctx.width / 2
+				y: app.ctx.height / 2 - 32
 			}
 			fonction:       end_turn
 			is_visible:     end_turn_is_visible
@@ -105,7 +105,7 @@ fn on_frame(mut app App) {
 	app.opt.settings_render(app)
 	playint.boutons_draw(mut app)
 	if app.playing {
-		if app.in_waiting_screen{
+		if app.in_waiting_screen {
 			waiting_screen_render(app)
 		}
 	} else {
@@ -161,7 +161,7 @@ fn draw_players_names(app App, transparence u8) {
 }
 
 // waiting screen
-fn waiting_screen_render(app App){
+fn waiting_screen_render(app App) {
 	mut transparence := u8(255)
 	if app.changing_options {
 		transparence = 150
