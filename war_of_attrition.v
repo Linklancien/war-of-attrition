@@ -27,6 +27,7 @@ mut:
 
 	// for this project:
 	player_liste []string
+	player_color []gx.Color
 	player_trun  int
 
 	playing bool
@@ -70,12 +71,18 @@ fn main() {
 	)
 	// setup before starting
 	app.player_liste << ['RED', 'BLUE']
-	app.players_units_liste = [][]Units{len: 2, init: []Units{}}
-	app.players_units_to_place_ids  = [][]int{len: 2, init: []int{}}
-	for _ in 0..2{
-		app.players_units_to_place_ids[0] << [app.players_units_liste[0].len]
-		app.players_units_liste[0] << [Soldier{}]
+	app.player_color << [gx.Color{125, 0, 0, 255}, gx.Color{0, 0, 125, 255}]
+	
+	app.players_units_liste = [][]Units{len: app.player_liste.len, init: []Units{}}
+	app.players_units_to_place_ids  = [][]int{len: app.player_liste.len, init: []int{}}
+
+	for p in 0..app.player_liste.len{
+		for _ in 0..100{
+			app.players_units_to_place_ids[p] << [app.players_units_liste[p].len]
+			app.players_units_liste[p] << [Soldier{color: app.player_color[p]}]
+		}
 	}
+
 	boutons_initialistation(mut app)
 
 	app.world_map = [][][]Hexa_tile{len: 24, init: [][]Hexa_tile{len: 12, init: []Hexa_tile{len: 1, init: Hexa_tile(Tile{})}}}
@@ -114,7 +121,7 @@ fn on_event(e &gg.Event, mut app App) {
 fn on_click(x f32, y f32, button gg.MouseButton, mut app App) {
 	app.mouse_pos = Vec2[f32]{x, y}
 	check_placement(mut app)
-	
+
 	playint.check_boutons_options(mut app)
 	playint.boutons_check(mut app)
 }
@@ -188,7 +195,7 @@ fn check_placement(mut app App) {
 		coo_y -= app.dec_y
 		
 		if coo_x >= 0 && coo_y >= 0 {
-			if app.players_units_to_place_ids[app.player_id_turn].len > 0{
+			if app.players_units_to_place_ids[app.player_id_turn].len > 0 && app.world_map[coo_x][coo_y].len < 2{
 				app.world_map[coo_x][coo_y] << [
 					Troops{
 						team_nb: app.player_id_turn
