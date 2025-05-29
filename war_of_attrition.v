@@ -41,6 +41,7 @@ mut:
 
 	world_map           [][][]Hexa_tile
 	players_units_liste [][]Units
+	players_units_to_place_ids [][]int
 }
 
 struct Tile {
@@ -70,7 +71,11 @@ fn main() {
 	// setup before starting
 	app.player_liste << ['RED', 'BLUE']
 	app.players_units_liste = [][]Units{len: 2, init: []Units{}}
-	app.players_units_liste[0] << [Soldier{}]
+	app.players_units_to_place_ids  = [][]int{len: 2, init: []int{}}
+	for _ in 0..2{
+		app.players_units_to_place_ids[0] << [app.players_units_liste[0].len]
+		app.players_units_liste[0] << [Soldier{}]
+	}
 	boutons_initialistation(mut app)
 
 	app.world_map = [][][]Hexa_tile{len: 24, init: [][]Hexa_tile{len: 12, init: []Hexa_tile{len: 1, init: Hexa_tile(Tile{})}}}
@@ -108,10 +113,10 @@ fn on_event(e &gg.Event, mut app App) {
 
 fn on_click(x f32, y f32, button gg.MouseButton, mut app App) {
 	app.mouse_pos = Vec2[f32]{x, y}
+	check_placement(mut app)
+	
 	playint.check_boutons_options(mut app)
 	playint.boutons_check(mut app)
-
-	check_placement(mut app)
 }
 
 fn on_move(x f32, y f32, mut app App) {
@@ -175,19 +180,23 @@ fn game_render(app App) {
 }
 
 fn check_placement(mut app App) {
-	mut coo_x, mut coo_y := hexagons.coo_ortho_to_hexa_x(app.mouse_pos.x / app.radius,
-		app.mouse_pos.y / app.radius, app.world_map.len, app.world_map[0].len)
+	if app.playing && !app.in_waiting_screen{
+		mut coo_x, mut coo_y := hexagons.coo_ortho_to_hexa_x(app.mouse_pos.x / app.radius,
+			app.mouse_pos.y / app.radius, app.world_map.len, app.world_map[0].len)
 
-	coo_x -= app.dec_x
-	coo_y -= app.dec_y
-	
-	if coo_x >= 0 && coo_y >= 0 {
-		app.world_map[coo_x][coo_y] << [
-			Troops{
-				team_nb: app.player_id_turn
-				id:      0
-			},
-		]
+		coo_x -= app.dec_x
+		coo_y -= app.dec_y
+		
+		if coo_x >= 0 && coo_y >= 0 {
+			if app.players_units_to_place_ids[app.player_id_turn].len > 0{
+				app.world_map[coo_x][coo_y] << [
+					Troops{
+						team_nb: app.player_id_turn
+						id:      app.players_units_to_place_ids[app.player_id_turn].pop()
+					},
+				]
+			}
+		}
 	}
 }
 
