@@ -193,8 +193,13 @@ fn game_render(app App) {
 	hexagons.draw_colored_map_x(app.ctx, app.dec_x, app.dec_y, app.radius, app.world_map,
 		transparency)
 	txt := app.player_liste[app.player_id_turn]
-	render_units(app, transparency)
 	playint.text_rect_render(app.ctx, app.text_cfg, 32, 32, true, true, txt, transparency)
+	render_units(app, transparency)
+	if app.in_placement_turns {
+		txt_plac := 'PLACEMENT TURNS'
+		playint.text_rect_render(app.ctx, app.text_cfg, app.ctx.width / 2, 32, true, true,
+			txt_plac, transparency)
+	}
 }
 
 fn check_placement(mut app App) {
