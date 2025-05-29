@@ -1,6 +1,6 @@
 module main
 
-import linklancien.playint { Appli, Bouton }
+import linklancien.playint { Appli, Bouton, attenuation }
 import hexagons { Hexa_tile }
 import os
 import gg
@@ -110,6 +110,8 @@ fn on_click(x f32, y f32, button gg.MouseButton, mut app App) {
 	app.mouse_pos = Vec2[f32]{x, y}
 	playint.check_boutons_options(mut app)
 	playint.boutons_check(mut app)
+
+	check_placement(mut app)
 }
 
 fn on_move(x f32, y f32, mut app App) {
@@ -168,9 +170,28 @@ fn game_render(app App) {
 	hexagons.draw_colored_map_x(app.ctx, app.dec_x, app.dec_y, app.radius, app.world_map,
 		transparency)
 	txt := app.player_liste[app.player_id_turn]
+	render_units(app, transparency)
 	playint.text_rect_render(app.ctx, app.text_cfg, 32, 32, true, true, txt, transparency)
 }
 
+fn check_placement(mut app App) {
+	mut coo_x, mut coo_y := hexagons.coo_ortho_to_hexa_x(app.mouse_pos.x, app.mouse_pos.y,
+		app.world_map.len, app.world_map[0].len)
+
+	coo_x -= app.dec_x
+	coo_y -= app.dec_y
+
+	if coo_x >= 0 && coo_y >= 0 {
+		app.world_map[coo_x][coo_y] << [
+			Troops{
+				team_nb: app.player_id_turn
+				id:      0
+			},
+		]
+	}
+}
+
+// BOUTONS:
 // start
 fn game_start(mut app Appli) {
 	if mut app is App {
@@ -240,7 +261,7 @@ fn end_turn_is_actionnable(mut app Appli) bool {
 	return false
 }
 
-// APP
+// APP INIT:
 fn boutons_initialistation(mut app App) {
 	app.boutons_liste << [
 		Bouton{
@@ -277,38 +298,44 @@ fn boutons_initialistation(mut app App) {
 }
 
 // UNITS
-fn render_units(app App) {
-	for punit in app.players_units_liste {
-		for unit in punit {
-			if unit.placed {
-				unit.render(app.ctx, app.radius - 5)
+fn render_units(app App, transparency u8) {
+	for coo_x in 0 .. app.world_map.len {
+		for coo_y in 0 .. app.world_map[coo_x].len {
+			pos_x, pos_y := hexagons.coo_hexa_x_to_ortho(coo_x, coo_y)
+			for mut troop in app.world_map[coo_x][coo_y][1..] {
+				match mut troop{
+					Troops{
+					team := troop.team_nb
+					unit_nb := troop.id
+					app.players_units_liste[team][unit_nb].render(app.ctx, app.radius - 5,
+						pos_x, pos_y, transparency)
+					}else{}
+				}
 			}
 		}
 	}
 }
 
 interface Units {
-	render(gg.Context, f32)
+	render(gg.Context, f32, f32, f32, u8)
 mut:
-	placed bool
-	pv     int
+	pv int
 }
 
 // for referencing in app.world_map
 struct Troops {
 mut:
-	color gx.Color = gx.Color{125, 125, 125, 255}
-	id    int
+	color   gx.Color = gx.Color{125, 125, 125, 255}
+	team_nb int
+	id      int
 }
 
 struct Soldier {
 mut:
-	placed bool
-	pv     int      = 10
-	color  gx.Color = gx.Color{125, 125, 125, 255}
-	pos    Vec2[f32]
+	pv    int      = 10
+	color gx.Color = gx.Color{125, 125, 125, 255}
 }
 
-fn (sol Soldier) render(ctx gg.Context, radius f32) {
-	ctx.draw_circle_filled(sol.pos.x, sol.pos.y, radius, sol.color)
+fn (sol Soldier) render(ctx gg.Context, radius f32, pos_x f32, pos_y f32, transparency u8) {
+	ctx.draw_circle_filled(pos_x, pos_y, radius, attenuation(sol.color, transparency))
 }
