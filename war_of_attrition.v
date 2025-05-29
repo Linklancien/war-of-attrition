@@ -175,12 +175,12 @@ fn game_render(app App) {
 }
 
 fn check_placement(mut app App) {
-	mut coo_x, mut coo_y := hexagons.coo_ortho_to_hexa_x(app.mouse_pos.x, app.mouse_pos.y,
-		app.world_map.len, app.world_map[0].len)
+	mut coo_x, mut coo_y := hexagons.coo_ortho_to_hexa_x(app.mouse_pos.x / app.radius,
+		app.mouse_pos.y / app.radius, app.world_map.len, app.world_map[0].len)
 
 	coo_x -= app.dec_x
 	coo_y -= app.dec_y
-
+	
 	if coo_x >= 0 && coo_y >= 0 {
 		app.world_map[coo_x][coo_y] << [
 			Troops{
@@ -301,15 +301,16 @@ fn boutons_initialistation(mut app App) {
 fn render_units(app App, transparency u8) {
 	for coo_x in 0 .. app.world_map.len {
 		for coo_y in 0 .. app.world_map[coo_x].len {
-			pos_x, pos_y := hexagons.coo_hexa_x_to_ortho(coo_x, coo_y)
+			pos_x, pos_y := hexagons.coo_hexa_x_to_ortho(coo_x + app.dec_x, coo_y + app.dec_y)
 			for mut troop in app.world_map[coo_x][coo_y][1..] {
-				match mut troop{
-					Troops{
-					team := troop.team_nb
-					unit_nb := troop.id
-					app.players_units_liste[team][unit_nb].render(app.ctx, app.radius - 5,
-						pos_x, pos_y, transparency)
-					}else{}
+				match mut troop {
+					Troops {
+						team := troop.team_nb
+						unit_nb := troop.id
+						app.players_units_liste[team][unit_nb].render(app.ctx, app.radius - 5,
+							pos_x * app.radius, pos_y * app.radius, transparency)
+					}
+					else {}
 				}
 			}
 		}
