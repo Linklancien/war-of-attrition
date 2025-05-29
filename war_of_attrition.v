@@ -1,6 +1,7 @@
 module main
 
 import linklancien.playint { Appli, Bouton }
+import hexagons { Hexa_tile }
 import os
 import gg
 import gx
@@ -33,6 +34,13 @@ mut:
 	// for the game
 	player_id_turn    int
 	in_waiting_screen bool
+
+	world_map [][][]Hexa_tile
+}
+
+struct Tile {
+mut:
+	color gx.Color = gx.Color{0, 125, 0, 255}
 }
 
 fn main() {
@@ -82,13 +90,15 @@ fn main() {
 			text:           'END TURN'
 			pos:            Vec2[f32]{
 				x: app.ctx.width / 2
-				y: app.ctx.height / 2 - 32
+				y: app.ctx.height - 32
 			}
 			fonction:       end_turn
 			is_visible:     end_turn_is_visible
 			is_actionnable: end_turn_is_actionnable
 		},
 	]
+
+	app.world_map = [][][]Hexa_tile{len: 24, init: [][]Hexa_tile{len: 12, init: []Hexa_tile{len: 1, init: Hexa_tile(Tile{})}}}
 
 	app.opt.init()
 
@@ -102,15 +112,18 @@ fn on_init(mut app App) {
 
 fn on_frame(mut app App) {
 	app.ctx.begin()
-	app.opt.settings_render(app)
-	playint.boutons_draw(mut app)
 	if app.playing {
 		if app.in_waiting_screen {
 			waiting_screen_render(app)
+		} else {
+			game_render(app)
 		}
 	} else {
 		main_menu_render(app)
 	}
+
+	app.opt.settings_render(app)
+	playint.boutons_draw(mut app)
 	app.ctx.end()
 }
 
@@ -144,34 +157,42 @@ fn on_resized(e &gg.Event, mut app App) {
 // main menu fn:
 fn main_menu_render(app App) {
 	// Main title
-	mut transparence := u8(255)
+	mut transparency := u8(255)
 	if app.changing_options {
-		transparence = 150
+		transparency = 150
 	}
 	playint.text_rect_render(app.ctx, app.text_cfg, app.ctx.width / 2, app.ctx.height / 2,
-		true, true, 'War of Attrition', transparence)
-	draw_players_names(app, transparence)
+		true, true, 'War of Attrition', transparency)
+	draw_players_names(app, transparency)
 }
 
-fn draw_players_names(app App, transparence u8) {
+fn draw_players_names(app App, transparency u8) {
 	for player_id in 0 .. app.player_liste.len {
 		playint.text_rect_render(app.ctx, app.text_cfg, 0, player_id * app.text_cfg.size * 2,
-			false, false, app.player_liste[player_id], transparence)
+			false, false, app.player_liste[player_id], transparency)
 	}
 }
 
 // waiting screen
 fn waiting_screen_render(app App) {
-	mut transparence := u8(255)
+	mut transparency := u8(255)
 	if app.changing_options {
-		transparence = 150
+		transparency = 150
 	}
 	txt := app.player_liste[app.player_id_turn]
 	playint.text_rect_render(app.ctx, app.text_cfg, app.ctx.width / 2, app.ctx.height / 2,
-		true, true, txt, transparence)
+		true, true, txt, transparency)
 }
 
 // games fn:
+fn game_render(app App) {
+	mut transparency := u8(255)
+	if app.changing_options {
+		transparency = 150
+	}
+	hexagons.draw_colored_map_x(app.ctx, 1, 1, f32(30), app.world_map, transparency)
+}
+
 // start
 fn game_start(mut app Appli) {
 	if mut app is App {
