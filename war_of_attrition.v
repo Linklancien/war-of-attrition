@@ -35,7 +35,12 @@ mut:
 	player_id_turn    int
 	in_waiting_screen bool
 
-	world_map [][][]Hexa_tile
+	radius f32 = 30
+	dec_x  int = 1
+	dec_y  int = 1
+
+	world_map           [][][]Hexa_tile
+	players_units_liste [][]Units
 }
 
 struct Tile {
@@ -64,39 +69,9 @@ fn main() {
 	)
 	// setup before starting
 	app.player_liste << ['RED', 'BLUE']
-
-	app.boutons_liste << [
-		Bouton{
-			text:           'START'
-			pos:            Vec2[f32]{
-				x: app.ctx.width / 2
-				y: app.ctx.height / 2 + 32
-			}
-			fonction:       game_start
-			is_visible:     start_is_visible
-			is_actionnable: start_is_actionnable
-		},
-		Bouton{
-			text:           'START TURN'
-			pos:            Vec2[f32]{
-				x: app.ctx.width / 2
-				y: app.ctx.height / 2 + 32
-			}
-			fonction:       start_turn
-			is_visible:     start_turn_is_visible
-			is_actionnable: start_turn_is_actionnable
-		},
-		Bouton{
-			text:           'END TURN'
-			pos:            Vec2[f32]{
-				x: app.ctx.width / 2
-				y: app.ctx.height - 32
-			}
-			fonction:       end_turn
-			is_visible:     end_turn_is_visible
-			is_actionnable: end_turn_is_actionnable
-		},
-	]
+	app.players_units_liste = [][]Units{len: 2, init: []Units{}}
+	app.players_units_liste[0] << [Soldier{}]
+	boutons_initialistation(mut app)
 
 	app.world_map = [][][]Hexa_tile{len: 24, init: [][]Hexa_tile{len: 12, init: []Hexa_tile{len: 1, init: Hexa_tile(Tile{})}}}
 
@@ -190,7 +165,10 @@ fn game_render(app App) {
 	if app.changing_options {
 		transparency = 150
 	}
-	hexagons.draw_colored_map_x(app.ctx, 1, 1, f32(30), app.world_map, transparency)
+	hexagons.draw_colored_map_x(app.ctx, app.dec_x, app.dec_y, app.radius, app.world_map,
+		transparency)
+	txt := app.player_liste[app.player_id_turn]
+	playint.text_rect_render(app.ctx, app.text_cfg, 32, 32, true, true, txt, transparency)
 }
 
 // start
@@ -260,4 +238,77 @@ fn end_turn_is_actionnable(mut app Appli) bool {
 		return app.playing && !app.in_waiting_screen && !app.changing_options
 	}
 	return false
+}
+
+// APP
+fn boutons_initialistation(mut app App) {
+	app.boutons_liste << [
+		Bouton{
+			text:           'START'
+			pos:            Vec2[f32]{
+				x: app.ctx.width / 2
+				y: app.ctx.height / 2 + 32
+			}
+			fonction:       game_start
+			is_visible:     start_is_visible
+			is_actionnable: start_is_actionnable
+		},
+		Bouton{
+			text:           'START TURN'
+			pos:            Vec2[f32]{
+				x: app.ctx.width / 2
+				y: app.ctx.height / 2 + 32
+			}
+			fonction:       start_turn
+			is_visible:     start_turn_is_visible
+			is_actionnable: start_turn_is_actionnable
+		},
+		Bouton{
+			text:           'END TURN'
+			pos:            Vec2[f32]{
+				x: app.ctx.width / 2
+				y: app.ctx.height - 32
+			}
+			fonction:       end_turn
+			is_visible:     end_turn_is_visible
+			is_actionnable: end_turn_is_actionnable
+		},
+	]
+}
+
+// UNITS
+fn render_units(app App) {
+	for punit in app.players_units_liste {
+		for unit in punit {
+			if unit.placed {
+				unit.render(app.ctx, app.radius - 5)
+			}
+		}
+	}
+}
+
+interface Units {
+	render(gg.Context, f32)
+mut:
+	placed bool
+	pv     int
+}
+
+// for referencing in app.world_map
+struct Troops {
+mut:
+	color gx.Color = gx.Color{125, 125, 125, 255}
+	id    int
+}
+
+struct Soldier {
+mut:
+	placed bool
+	pv     int      = 10
+	color  gx.Color = gx.Color{125, 125, 125, 255}
+	pos    Vec2[f32]
+}
+
+fn (sol Soldier) render(ctx gg.Context, radius f32) {
+	ctx.draw_circle_filled(sol.pos.x, sol.pos.y, radius, sol.color)
 }
