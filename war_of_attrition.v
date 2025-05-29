@@ -28,13 +28,19 @@ mut:
 	// for this project:
 	player_liste []string
 	player_color []gx.Color
-	player_trun  int
 
 	playing bool
 	// for the main menu
-	// for the game
-	player_id_turn    int
+
+	// for placement turns
+	in_placement_turns         bool
+	players_units_to_place_ids [][]int
+
+	// for waitingscreen
 	in_waiting_screen bool
+
+	// for the game
+	player_id_turn int
 
 	radius f32 = 30
 	dec_x  int = 1
@@ -42,7 +48,8 @@ mut:
 
 	world_map           [][][]Hexa_tile
 	players_units_liste [][]Units
-	players_units_to_place_ids [][]int
+
+	id_move_unit int = -1
 }
 
 struct Tile {
@@ -54,7 +61,7 @@ fn main() {
 	mut app := &App{}
 	app.ctx = gg.new_context(
 		fullscreen:    false
-		width:         100 * 6
+		width:         100 * 8
 		height:        100 * 6
 		create_window: true
 		window_title:  '-WAR OF ATTRITION-'
@@ -72,14 +79,18 @@ fn main() {
 	// setup before starting
 	app.player_liste << ['RED', 'BLUE']
 	app.player_color << [gx.Color{125, 0, 0, 255}, gx.Color{0, 0, 125, 255}]
-	
-	app.players_units_liste = [][]Units{len: app.player_liste.len, init: []Units{}}
-	app.players_units_to_place_ids  = [][]int{len: app.player_liste.len, init: []int{}}
 
-	for p in 0..app.player_liste.len{
-		for _ in 0..100{
+	app.players_units_liste = [][]Units{len: app.player_liste.len, init: []Units{}}
+	app.players_units_to_place_ids = [][]int{len: app.player_liste.len, init: []int{}}
+
+	for p in 0 .. app.player_liste.len {
+		for _ in 0 .. 100 {
 			app.players_units_to_place_ids[p] << [app.players_units_liste[p].len]
-			app.players_units_liste[p] << [Soldier{color: app.player_color[p]}]
+			app.players_units_liste[p] << [
+				Soldier{
+					color: app.player_color[p]
+				},
+			]
 		}
 	}
 
@@ -187,21 +198,24 @@ fn game_render(app App) {
 }
 
 fn check_placement(mut app App) {
-	if app.playing && !app.in_waiting_screen{
-		mut coo_x, mut coo_y := hexagons.coo_ortho_to_hexa_x(app.mouse_pos.x / app.radius,
-			app.mouse_pos.y / app.radius, app.world_map.len, app.world_map[0].len)
+	if app.in_placement_turns {
+		if app.playing && !app.in_waiting_screen {
+			mut coo_x, mut coo_y := hexagons.coo_ortho_to_hexa_x(app.mouse_pos.x / app.radius,
+				app.mouse_pos.y / app.radius, app.world_map.len, app.world_map[0].len)
 
-		coo_x -= app.dec_x
-		coo_y -= app.dec_y
-		
-		if coo_x >= 0 && coo_y >= 0 {
-			if app.players_units_to_place_ids[app.player_id_turn].len > 0 && app.world_map[coo_x][coo_y].len < 2{
-				app.world_map[coo_x][coo_y] << [
-					Troops{
-						team_nb: app.player_id_turn
-						id:      app.players_units_to_place_ids[app.player_id_turn].pop()
-					},
-				]
+			coo_x -= app.dec_x
+			coo_y -= app.dec_y
+
+			if coo_x >= 0 && coo_y >= 0 {
+				if app.players_units_to_place_ids[app.player_id_turn].len > 0
+					&& app.world_map[coo_x][coo_y].len < 2 {
+					app.world_map[coo_x][coo_y] << [
+						Troops{
+							team_nb: app.player_id_turn
+							id:      app.players_units_to_place_ids[app.player_id_turn].pop()
+						},
+					]
+				}
 			}
 		}
 	}
@@ -213,6 +227,8 @@ fn game_start(mut app Appli) {
 	if mut app is App {
 		app.playing = true
 		app.in_waiting_screen = true
+		app.in_placement_turns = true
+		app.player_id_turn = app.player_liste.len - 1
 	}
 }
 
@@ -256,6 +272,9 @@ fn end_turn(mut app Appli) {
 	if mut app is App {
 		if app.player_id_turn == 0 {
 			app.player_id_turn = app.player_liste.len - 1
+			if app.in_placement_turns {
+				app.in_placement_turns = false
+			}
 		} else {
 			app.player_id_turn -= 1
 		}
