@@ -211,8 +211,8 @@ fn game_render(app App) {
 		playint.text_rect_render(app.ctx, app.text_cfg, app.ctx.width / 2, 32, true, true,
 			txt_plac, transparency)
 		txt_nb := 'UNITS TO PLACE: ${app.players_units_to_place_ids[app.player_id_turn].len}'
-		playint.text_rect_render(app.ctx, app.text_cfg, app.ctx.width - 128, 32, true, true,
-			txt_nb, transparency)
+		playint.text_rect_render(app.ctx, app.text_cfg, app.ctx.width - 128, 32, true,
+			true, txt_nb, transparency)
 	}
 }
 
@@ -417,8 +417,8 @@ fn render_units(app App, transparency u8) {
 				match mut troop {
 					Troops {
 						team := troop.team_nb
-						unit_nb := troop.id
-						app.players_units_liste[team][unit_nb].render(app.ctx, app.radius - 5,
+						unit_id := troop.id
+						app.players_units_liste[team][unit_id].render(app.ctx, app.radius - 5,
 							pos_x * app.radius, pos_y * app.radius, transparency)
 					}
 					else {}
@@ -430,14 +430,16 @@ fn render_units(app App, transparency u8) {
 		pos_x, pos_y := hexagons.coo_hexa_x_to_ortho(app.pos_select_x + app.dec_x,
 			app.pos_select_y + app.dec_y)
 		team := app.troop_select.team_nb
-		unit_nb := app.troop_select.id
-		app.players_units_liste[team][unit_nb].render(app.ctx, app.radius - 5, pos_x * app.radius,
+		unit_id := app.troop_select.id
+		app.players_units_liste[team][unit_id].render(app.ctx, app.radius - 5, pos_x * app.radius,
 			pos_y * app.radius, transparency - 100)
+		app.players_units_liste[team][unit_id].select_render(app.ctx, app, transparency)
 	}
 }
 
 interface Units {
 	render(gg.Context, f32, f32, f32, u8)
+	select_render(gg.Context, App, u8)
 mut:
 	pv int
 }
@@ -452,10 +454,18 @@ mut:
 
 struct Soldier {
 mut:
-	pv    int      = 10
-	color gx.Color = gx.Color{125, 125, 125, 255}
+	pv         int      = 10
+	mouvements int      = 30
+	color      gx.Color = gx.Color{125, 125, 125, 255}
 }
 
 fn (sol Soldier) render(ctx gg.Context, radius f32, pos_x f32, pos_y f32, transparency u8) {
 	ctx.draw_circle_filled(pos_x, pos_y, radius, attenuation(sol.color, transparency))
+}
+
+fn (sol Soldier) select_render(ctx gg.Context, app App, transparency u8) {
+	txt := 'UNIT Select: \nPv: ${sol.pv} \nMouvements: ${sol.mouvements}'
+
+	playint.text_rect_render(app.ctx, app.text_cfg, app.ctx.width - 64, app.ctx.height / 2,
+		true, true, txt, transparency)
 }
