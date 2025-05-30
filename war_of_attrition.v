@@ -247,35 +247,36 @@ fn check_unit_interaction(mut app App) {
 			if !app.in_selection && app.world_map[coo_x][coo_y].len > 1 {
 				tempo := app.world_map[coo_x][coo_y].pop()
 				if tempo is Troops {
-					if tempo.team_nb == app.player_id_turn{
+					if tempo.team_nb == app.player_id_turn {
 						app.troop_select = tempo
 
 						app.pos_select_x = coo_x
 						app.pos_select_y = coo_y
 
 						app.in_selection = true
-					}
-					else{
+					} else {
 						app.world_map[coo_x][coo_y] << [tempo]
 					}
 				} else {
 					panic('${tempo} is not Troops')
 				}
-			}
-			else if app.in_selection {
-				if app.world_map[coo_x][coo_y].len < 2{
-					app.world_map[coo_x][coo_y] << [Troops{
-						color: app.troop_select.color
-						team_nb: app.troop_select.team_nb
-						id: app.troop_select.id
-					}]
-				}
-				else{
-					app.world_map[app.pos_select_x][app.pos_select_y] << [Troops{
-						color: app.troop_select.color
-						team_nb: app.troop_select.team_nb
-						id: app.troop_select.id
-					}]
+			} else if app.in_selection {
+				if app.world_map[coo_x][coo_y].len < 2 {
+					app.world_map[coo_x][coo_y] << [
+						Troops{
+							color:   app.troop_select.color
+							team_nb: app.troop_select.team_nb
+							id:      app.troop_select.id
+						},
+					]
+				} else {
+					app.world_map[app.pos_select_x][app.pos_select_y] << [
+						Troops{
+							color:   app.troop_select.color
+							team_nb: app.troop_select.team_nb
+							id:      app.troop_select.id
+						},
+					]
 				}
 				app.in_selection = false
 			}
@@ -340,13 +341,14 @@ fn end_turn(mut app Appli) {
 		} else {
 			app.player_id_turn -= 1
 		}
-		if app.in_selection{
-			app.world_map[app.pos_select_x][app.pos_select_y] << [Troops{
-						color: app.troop_select.color
-						team_nb: app.troop_select.team_nb
-						id: app.troop_select.id
-					}]
-				}
+		if app.in_selection {
+			app.world_map[app.pos_select_x][app.pos_select_y] << [
+				Troops{
+					color:   app.troop_select.color
+					team_nb: app.troop_select.team_nb
+					id:      app.troop_select.id
+				},
+			]
 			app.in_selection = false
 		}
 		app.in_waiting_screen = true
