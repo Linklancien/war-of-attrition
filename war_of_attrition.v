@@ -219,7 +219,7 @@ fn game_render(app App) {
 fn check_placement(mut app App) {
 	if app.playing && !app.in_waiting_screen {
 		mut coo_x, mut coo_y := hexagons.coo_ortho_to_hexa_x(app.mouse_pos.x / app.radius,
-			app.mouse_pos.y / app.radius, app.world_map.len, app.world_map[0].len)
+			app.mouse_pos.y / app.radius, app.world_map.len + app.dec_x, app.world_map[0].len + app.dec_y)
 
 		coo_x -= app.dec_x
 		coo_y -= app.dec_y
@@ -241,7 +241,7 @@ fn check_placement(mut app App) {
 fn check_unit_interaction(mut app App) {
 	if app.playing && !app.in_waiting_screen {
 		mut coo_x, mut coo_y := hexagons.coo_ortho_to_hexa_x(app.mouse_pos.x / app.radius,
-			app.mouse_pos.y / app.radius, app.world_map.len, app.world_map[0].len)
+			app.mouse_pos.y / app.radius, app.world_map.len + app.dec_x, app.world_map[0].len + app.dec_y)
 
 		coo_x -= app.dec_x
 		coo_y -= app.dec_y
@@ -433,13 +433,13 @@ fn render_units(app App, transparency u8) {
 		unit_id := app.troop_select.id
 		app.players_units_liste[team][unit_id].render(app.ctx, app.radius - 5, pos_x * app.radius,
 			pos_y * app.radius, transparency - 100)
-		app.players_units_liste[team][unit_id].select_render(app.ctx, app, transparency)
+		app.players_units_liste[team][unit_id].select_render(app.ctx, unit_id, app, transparency)
 	}
 }
 
 interface Units {
 	render(gg.Context, f32, f32, f32, u8)
-	select_render(gg.Context, App, u8)
+	select_render(gg.Context, int, App, u8)
 mut:
 	pv int
 }
@@ -463,8 +463,8 @@ fn (sol Soldier) render(ctx gg.Context, radius f32, pos_x f32, pos_y f32, transp
 	ctx.draw_circle_filled(pos_x, pos_y, radius, attenuation(sol.color, transparency))
 }
 
-fn (sol Soldier) select_render(ctx gg.Context, app App, transparency u8) {
-	txt := 'UNIT Select: \nPv: ${sol.pv} \nMouvements: ${sol.mouvements}'
+fn (sol Soldier) select_render(ctx gg.Context, id int, app App, transparency u8) {
+	txt := 'UNIT Select: \nSoldier $id \nPv: ${sol.pv} \nMouvements: ${sol.mouvements}'
 
 	playint.text_rect_render(app.ctx, app.text_cfg, app.ctx.width - 64, app.ctx.height / 2,
 		true, true, txt, transparency)
