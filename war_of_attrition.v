@@ -90,7 +90,7 @@ fn main() {
 	app.players_units_to_place_ids = [][]int{len: app.player_liste.len, init: []int{}}
 
 	for p in 0 .. app.player_liste.len {
-		for _ in 0 .. 100 {
+		for _ in 0 .. 10 {
 			app.players_units_to_place_ids[p] << [app.players_units_liste[p].len]
 			app.players_units_liste[p] << [
 				Soldier{
@@ -210,6 +210,9 @@ fn game_render(app App) {
 		txt_plac := 'PLACEMENT TURNS'
 		playint.text_rect_render(app.ctx, app.text_cfg, app.ctx.width / 2, 32, true, true,
 			txt_plac, transparency)
+		txt_nb := 'UNITS TO PLACE: ${app.players_units_to_place_ids[app.player_id_turn].len}'
+		playint.text_rect_render(app.ctx, app.text_cfg, app.ctx.width - 128, 32, true, true,
+			txt_nb, transparency)
 	}
 }
 
