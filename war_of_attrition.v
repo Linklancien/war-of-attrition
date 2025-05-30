@@ -46,9 +46,15 @@ mut:
 	dec_x  int = 1
 	dec_y  int = 1
 
+	// important for save
 	world_map           [][][]Hexa_tile
 	players_units_liste [][]Units
+	//
 
+	in_selection bool
+	pos_select_x int
+	pos_select_y int
+	troop_select Troops
 	id_move_unit int = -1
 }
 
@@ -131,7 +137,12 @@ fn on_event(e &gg.Event, mut app App) {
 
 fn on_click(x f32, y f32, button gg.MouseButton, mut app App) {
 	app.mouse_pos = Vec2[f32]{x, y}
-	check_placement(mut app)
+
+	if app.in_placement_turns {
+		check_placement(mut app)
+	} else {
+		check_unit_interaction(mut app)
+	}
 
 	playint.check_boutons_options(mut app)
 	playint.boutons_check(mut app)
@@ -203,24 +214,70 @@ fn game_render(app App) {
 }
 
 fn check_placement(mut app App) {
-	if app.in_placement_turns {
-		if app.playing && !app.in_waiting_screen {
-			mut coo_x, mut coo_y := hexagons.coo_ortho_to_hexa_x(app.mouse_pos.x / app.radius,
-				app.mouse_pos.y / app.radius, app.world_map.len, app.world_map[0].len)
+	if app.playing && !app.in_waiting_screen {
+		mut coo_x, mut coo_y := hexagons.coo_ortho_to_hexa_x(app.mouse_pos.x / app.radius,
+			app.mouse_pos.y / app.radius, app.world_map.len, app.world_map[0].len)
 
-			coo_x -= app.dec_x
-			coo_y -= app.dec_y
+		coo_x -= app.dec_x
+		coo_y -= app.dec_y
 
-			if coo_x >= 0 && coo_y >= 0 {
-				if app.players_units_to_place_ids[app.player_id_turn].len > 0
-					&& app.world_map[coo_x][coo_y].len < 2 {
-					app.world_map[coo_x][coo_y] << [
-						Troops{
-							team_nb: app.player_id_turn
-							id:      app.players_units_to_place_ids[app.player_id_turn].pop()
-						},
-					]
+		if coo_x >= 0 && coo_y >= 0 {
+			if app.players_units_to_place_ids[app.player_id_turn].len > 0
+				&& app.world_map[coo_x][coo_y].len < 2 {
+				app.world_map[coo_x][coo_y] << [
+					Troops{
+						team_nb: app.player_id_turn
+						id:      app.players_units_to_place_ids[app.player_id_turn].pop()
+					},
+				]
+			}
+		}
+	}
+}
+
+fn check_unit_interaction(mut app App) {
+	if app.playing && !app.in_waiting_screen {
+		mut coo_x, mut coo_y := hexagons.coo_ortho_to_hexa_x(app.mouse_pos.x / app.radius,
+			app.mouse_pos.y / app.radius, app.world_map.len, app.world_map[0].len)
+
+		coo_x -= app.dec_x
+		coo_y -= app.dec_y
+
+		if coo_x >= 0 && coo_y >= 0 {
+			if !app.in_selection && app.world_map[coo_x][coo_y].len > 1 {
+				tempo := app.world_map[coo_x][coo_y].pop()
+				if tempo is Troops {
+					if tempo.team_nb == app.player_id_turn{
+						app.troop_select = tempo
+
+						app.pos_select_x = coo_x
+						app.pos_select_y = coo_y
+
+						app.in_selection = true
+					}
+					else{
+						app.world_map[coo_x][coo_y] << [tempo]
+					}
+				} else {
+					panic('${tempo} is not Troops')
 				}
+			}
+			else if app.in_selection {
+				if app.world_map[coo_x][coo_y].len < 2{
+					app.world_map[coo_x][coo_y] << [Troops{
+						color: app.troop_select.color
+						team_nb: app.troop_select.team_nb
+						id: app.troop_select.id
+					}]
+				}
+				else{
+					app.world_map[app.pos_select_x][app.pos_select_y] << [Troops{
+						color: app.troop_select.color
+						team_nb: app.troop_select.team_nb
+						id: app.troop_select.id
+					}]
+				}
+				app.in_selection = false
 			}
 		}
 	}
@@ -282,6 +339,15 @@ fn end_turn(mut app Appli) {
 			}
 		} else {
 			app.player_id_turn -= 1
+		}
+		if app.in_selection{
+			app.world_map[app.pos_select_x][app.pos_select_y] << [Troops{
+						color: app.troop_select.color
+						team_nb: app.troop_select.team_nb
+						id: app.troop_select.id
+					}]
+				}
+			app.in_selection = false
 		}
 		app.in_waiting_screen = true
 	}
@@ -354,6 +420,14 @@ fn render_units(app App, transparency u8) {
 				}
 			}
 		}
+	}
+	if app.in_selection {
+		pos_x, pos_y := hexagons.coo_hexa_x_to_ortho(app.pos_select_x + app.dec_x,
+			app.pos_select_y + app.dec_y)
+		team := app.troop_select.team_nb
+		unit_nb := app.troop_select.id
+		app.players_units_liste[team][unit_nb].render(app.ctx, app.radius - 5, pos_x * app.radius,
+			pos_y * app.radius, transparency - 100)
 	}
 }
 
