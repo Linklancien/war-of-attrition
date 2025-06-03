@@ -21,7 +21,6 @@ mut:
 	bouton_cfg gx.TextCfg
 
 	changing_options bool
-	mouse_pos        Vec2[f32]
 
 	boutons_liste []Bouton
 
@@ -75,8 +74,6 @@ fn main() {
 		bg_color:      bg_color
 		init_fn:       on_init
 		frame_fn:      on_frame
-		event_fn:      on_event
-		move_fn:       on_move
 		click_fn:      on_click
 		resized_fn:    on_resized
 		sample_count:  4
@@ -111,7 +108,7 @@ fn main() {
 }
 
 fn on_init(mut app App) {
-	// app.opt.new_action(fonction, 'fonction_name', -1 or int(KeyCode. ))
+	// app.opt.new_action(function, 'function_name', -1 or int(KeyCode. ))
 }
 
 fn on_frame(mut app App) {
@@ -136,7 +133,6 @@ fn on_event(e &gg.Event, mut app App) {
 }
 
 fn on_click(x f32, y f32, button gg.MouseButton, mut app App) {
-	app.mouse_pos = Vec2[f32]{x, y}
 
 	if app.in_placement_turns {
 		check_placement(mut app)
@@ -146,10 +142,6 @@ fn on_click(x f32, y f32, button gg.MouseButton, mut app App) {
 
 	playint.check_boutons_options(mut app)
 	playint.boutons_check(mut app)
-}
-
-fn on_move(x f32, y f32, mut app App) {
-	app.mouse_pos = Vec2[f32]{x, y}
 }
 
 fn on_resized(e &gg.Event, mut app App) {
@@ -218,8 +210,9 @@ fn game_render(app App) {
 
 fn check_placement(mut app App) {
 	if app.playing && !app.in_waiting_screen {
-		mut coo_x, mut coo_y := hexagons.coo_ortho_to_hexa_x(app.mouse_pos.x / app.radius,
-			app.mouse_pos.y / app.radius, app.world_map.len + app.dec_x, app.world_map[0].len + app.dec_y)
+		mut coo_x, mut coo_y := hexagons.coo_ortho_to_hexa_x(app.ctx.mouse_pos_x / app.radius,
+			app.ctx.mouse_pos_y / app.radius, app.world_map.len + app.dec_x, app.world_map[0].len +
+			app.dec_y)
 
 		coo_x -= app.dec_x
 		coo_y -= app.dec_y
@@ -235,13 +228,16 @@ fn check_placement(mut app App) {
 				]
 			}
 		}
+		println(hexagons.path_to_hexa_x(0, 0, coo_x, coo_y, app.world_map.len + app.dec_x,
+			app.world_map[0].len + app.dec_y))
 	}
 }
 
 fn check_unit_interaction(mut app App) {
 	if app.playing && !app.in_waiting_screen {
-		mut coo_x, mut coo_y := hexagons.coo_ortho_to_hexa_x(app.mouse_pos.x / app.radius,
-			app.mouse_pos.y / app.radius, app.world_map.len + app.dec_x, app.world_map[0].len + app.dec_y)
+		mut coo_x, mut coo_y := hexagons.coo_ortho_to_hexa_x(app.ctx.mouse_pos_x / app.radius,
+			app.ctx.mouse_pos_y / app.radius, app.world_map.len + app.dec_x, app.world_map[0].len +
+			app.dec_y)
 
 		coo_x -= app.dec_x
 		coo_y -= app.dec_y
@@ -381,7 +377,7 @@ fn boutons_initialistation(mut app App) {
 				x: app.ctx.width / 2
 				y: app.ctx.height / 2 + 32
 			}
-			fonction:       game_start
+			function:       game_start
 			is_visible:     start_is_visible
 			is_actionnable: start_is_actionnable
 		},
@@ -391,7 +387,7 @@ fn boutons_initialistation(mut app App) {
 				x: app.ctx.width / 2
 				y: app.ctx.height / 2 + 32
 			}
-			fonction:       start_turn
+			function:       start_turn
 			is_visible:     start_turn_is_visible
 			is_actionnable: start_turn_is_actionnable
 		},
@@ -401,7 +397,7 @@ fn boutons_initialistation(mut app App) {
 				x: app.ctx.width / 2
 				y: app.ctx.height - 32
 			}
-			fonction:       end_turn
+			function:       end_turn
 			is_visible:     end_turn_is_visible
 			is_actionnable: end_turn_is_actionnable
 		},
@@ -464,7 +460,7 @@ fn (sol Soldier) render(ctx gg.Context, radius f32, pos_x f32, pos_y f32, transp
 }
 
 fn (sol Soldier) select_render(ctx gg.Context, id int, app App, transparency u8) {
-	txt := 'UNIT Select: \nSoldier $id \nPv: ${sol.pv} \nMouvements: ${sol.mouvements}'
+	txt := 'UNIT Select: \nSoldier ${id} \nPv: ${sol.pv} \nMouvements: ${sol.mouvements}'
 
 	playint.text_rect_render(app.ctx, app.text_cfg, app.ctx.width - 64, app.ctx.height / 2,
 		true, true, txt, transparency)
