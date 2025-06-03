@@ -22,7 +22,7 @@ mut:
 
 	changing_options bool
 
-	boutons_liste []Bouton
+	boutons_list []Bouton
 
 	// for this project:
 	player_liste []string
@@ -133,7 +133,6 @@ fn on_event(e &gg.Event, mut app App) {
 }
 
 fn on_click(x f32, y f32, button gg.MouseButton, mut app App) {
-
 	if app.in_placement_turns {
 		check_placement(mut app)
 	} else {
@@ -370,7 +369,7 @@ fn end_turn_is_actionnable(mut app Appli) bool {
 
 // APP INIT:
 fn boutons_initialistation(mut app App) {
-	app.boutons_liste << [
+	app.boutons_list << [
 		Bouton{
 			text:           'START'
 			pos:            Vec2[f32]{
