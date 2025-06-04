@@ -3,7 +3,7 @@ module main
 import linklancien.playint { Appli, Bouton, attenuation }
 import hexagons { Hexa_tile }
 import os
-import gg
+import gg {KeyCode}
 import gx
 import math.vec { Vec2 }
 
@@ -31,8 +31,8 @@ mut:
 	player_id_turn int
 
 	radius f32 = 30
-	dec_x  int = 1
-	dec_y  int = 1
+	dec_x  int = 2
+	dec_y  int = 2
 
 	// important for save
 	world_map           [][][]Hexa_tile
@@ -99,6 +99,7 @@ fn main() {
 
 fn on_init(mut app App) {
 	// app.new_action(function, 'function_name', -1 or int(KeyCode. ))
+	app.new_action(game_start, 'game start', int(KeyCode.enter))
 }
 
 fn on_frame(mut app App) {
@@ -275,11 +276,18 @@ fn check_unit_interaction(mut app App) {
 // BOUTONS:
 // start
 fn game_start(mut app Appli) {
+	println('HERE')
 	if mut app is App {
-		app.playing = true
-		app.in_waiting_screen = true
-		app.in_placement_turns = true
-		app.player_id_turn = app.player_liste.len - 1
+		println('ALSO HERE')
+		if !app.playing{
+			app.playing = true
+			app.in_waiting_screen = true
+			app.in_placement_turns = true
+			app.player_id_turn = app.player_liste.len - 1
+		}
+	}
+	if mut app is playint.Opt{
+		println('BUT Here')
 	}
 }
 
