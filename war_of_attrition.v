@@ -11,19 +11,8 @@ const bg_color = gg.Color{0, 0, 0, 255}
 const font_path = os.resource_abs_path('FontMono.ttf')
 
 struct App {
+	playint.Opt
 mut:
-	// for playint:
-	ctx &gg.Context = unsafe { nil }
-	opt playint.Opt
-
-	// Police
-	text_cfg   gx.TextCfg
-	bouton_cfg gx.TextCfg
-
-	changing_options bool
-
-	boutons_list []Bouton
-
 	// for this project:
 	player_liste []string
 	player_color []gx.Color
@@ -74,6 +63,7 @@ fn main() {
 		bg_color:      bg_color
 		init_fn:       on_init
 		frame_fn:      on_frame
+		event_fn:      on_event
 		click_fn:      on_click
 		resized_fn:    on_resized
 		sample_count:  4
@@ -101,14 +91,14 @@ fn main() {
 
 	app.world_map = [][][]Hexa_tile{len: 24, init: [][]Hexa_tile{len: 12, init: []Hexa_tile{len: 1, init: Hexa_tile(Tile{})}}}
 
-	app.opt.init()
+	app.init()
 
 	// run the window
 	app.ctx.run()
 }
 
 fn on_init(mut app App) {
-	// app.opt.new_action(function, 'function_name', -1 or int(KeyCode. ))
+	// app.new_action(function, 'function_name', -1 or int(KeyCode. ))
 }
 
 fn on_frame(mut app App) {
@@ -123,13 +113,13 @@ fn on_frame(mut app App) {
 		main_menu_render(app)
 	}
 
-	app.opt.settings_render(app)
-	playint.boutons_draw(mut app)
+	app.settings_render()
+	app.boutons_draw()
 	app.ctx.end()
 }
 
 fn on_event(e &gg.Event, mut app App) {
-	playint.on_event(e, mut &app)
+	app.on_event(e)
 }
 
 fn on_click(x f32, y f32, button gg.MouseButton, mut app App) {
@@ -139,8 +129,8 @@ fn on_click(x f32, y f32, button gg.MouseButton, mut app App) {
 		check_unit_interaction(mut app)
 	}
 
-	playint.check_boutons_options(mut app)
-	playint.boutons_check(mut app)
+	app.check_boutons_options()
+	app.boutons_check()
 }
 
 fn on_resized(e &gg.Event, mut app App) {
@@ -150,7 +140,7 @@ fn on_resized(e &gg.Event, mut app App) {
 	new_x := size.width
 	new_y := size.height
 
-	playint.boutons_pos_resize(mut app, old_x, old_y, new_x, new_y)
+	app.boutons_pos_resize(old_x, old_y, new_x, new_y)
 
 	app.ctx.width = size.width
 	app.ctx.height = size.height
