@@ -1,9 +1,9 @@
 module main
 
-import linklancien.playint { Appli, Bouton, attenuation }
+import linklancien.playint { Appli, Button, attenuation }
 import hexagons { Hexa_tile }
 import os
-import gg {KeyCode}
+import gg { KeyCode }
 import gx
 import math.vec { Vec2 }
 
@@ -87,7 +87,7 @@ fn main() {
 		}
 	}
 
-	boutons_initialistation(mut app)
+	buttons_initialistation(mut app)
 
 	app.world_map = [][][]Hexa_tile{len: 24, init: [][]Hexa_tile{len: 12, init: []Hexa_tile{len: 1, init: Hexa_tile(Tile{})}}}
 
@@ -100,6 +100,16 @@ fn main() {
 fn on_init(mut app App) {
 	// app.new_action(function, 'function_name', -1 or int(KeyCode. ))
 	app.new_action(game_start, 'game start', int(KeyCode.enter))
+	name := ['camera up', 'camera down', 'camera right', 'camera left']
+	mvt := [[0, -2], [0, 2], [2, 0], [-2, 0]]
+	key := [int(KeyCode.up), int(KeyCode.down), int(KeyCode.right), int(KeyCode.left)]
+	for i in 0 .. 4 {
+		move_x := mvt[i][0]
+		move_y := mvt[i][1]
+		app.new_action(fn [move_x, move_y] (mut app Appli) {
+			cam_move(mut app, move_x, move_y)
+		}, name[i], key[i])
+	}
 }
 
 fn on_frame(mut app App) {
@@ -115,12 +125,12 @@ fn on_frame(mut app App) {
 	}
 
 	app.settings_render()
-	app.boutons_draw()
+	app.buttons_draw(mut app)
 	app.ctx.end()
 }
 
 fn on_event(e &gg.Event, mut app App) {
-	app.on_event(e)
+	app.on_event(e, mut app)
 }
 
 fn on_click(x f32, y f32, button gg.MouseButton, mut app App) {
@@ -130,8 +140,8 @@ fn on_click(x f32, y f32, button gg.MouseButton, mut app App) {
 		check_unit_interaction(mut app)
 	}
 
-	app.check_boutons_options()
-	app.boutons_check()
+	app.check_buttons_options()
+	app.buttons_check(mut app)
 }
 
 fn on_resized(e &gg.Event, mut app App) {
@@ -141,7 +151,7 @@ fn on_resized(e &gg.Event, mut app App) {
 	new_x := size.width
 	new_y := size.height
 
-	app.boutons_pos_resize(old_x, old_y, new_x, new_y)
+	app.buttons_pos_resize(old_x, old_y, new_x, new_y)
 
 	app.ctx.width = size.width
 	app.ctx.height = size.height
@@ -177,7 +187,7 @@ fn waiting_screen_render(app App) {
 		true, true, txt, transparency)
 }
 
-// games fn:
+// game fn:
 fn game_render(app App) {
 	mut transparency := u8(255)
 	if app.changing_options {
@@ -273,21 +283,25 @@ fn check_unit_interaction(mut app App) {
 	}
 }
 
+fn cam_move(mut app Appli, move_x int, move_y int) {
+	if mut app is App {
+		app.dec_x += move_x
+		app.dec_y += move_y
+	}
+}
+
 // BOUTONS:
 // start
 fn game_start(mut app Appli) {
-	println('HERE')
 	if mut app is App {
-		println('ALSO HERE')
-		if !app.playing{
+		if !app.playing {
 			app.playing = true
 			app.in_waiting_screen = true
 			app.in_placement_turns = true
 			app.player_id_turn = app.player_liste.len - 1
 		}
 	}
-	if mut app is playint.Opt{
-		println('BUT Here')
+	if mut app is playint.Opt {
 	}
 }
 
@@ -366,9 +380,9 @@ fn end_turn_is_actionnable(mut app Appli) bool {
 }
 
 // APP INIT:
-fn boutons_initialistation(mut app App) {
-	app.boutons_list << [
-		Bouton{
+fn buttons_initialistation(mut app App) {
+	app.buttons_list << [
+		Button{
 			text:           'START'
 			pos:            Vec2[f32]{
 				x: app.ctx.width / 2
@@ -378,7 +392,7 @@ fn boutons_initialistation(mut app App) {
 			is_visible:     start_is_visible
 			is_actionnable: start_is_actionnable
 		},
-		Bouton{
+		Button{
 			text:           'START TURN'
 			pos:            Vec2[f32]{
 				x: app.ctx.width / 2
@@ -388,7 +402,7 @@ fn boutons_initialistation(mut app App) {
 			is_visible:     start_turn_is_visible
 			is_actionnable: start_turn_is_actionnable
 		},
-		Bouton{
+		Button{
 			text:           'END TURN'
 			pos:            Vec2[f32]{
 				x: app.ctx.width / 2
