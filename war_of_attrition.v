@@ -43,7 +43,6 @@ mut:
 	pos_select_x int
 	pos_select_y int
 	troop_select Troops
-	id_move_unit int = -1
 }
 
 struct Tile {
@@ -193,7 +192,16 @@ fn game_render(app App) {
 	if app.changing_options {
 		transparency = 150
 	}
-	hexagons.draw_colored_map_x(app.ctx, app.dec_x, app.dec_y, app.radius, app.world_map,
+	mut path := [][]int{}
+	if app.in_selection{
+		coo_x, coo_y := hexagons.coo_ortho_to_hexa_x(app.ctx.mouse_pos_x / app.radius,
+			app.ctx.mouse_pos_y / app.radius, app.world_map.len + app.dec_x, app.world_map[0].len +
+			app.dec_y)
+		if coo_x != -1 && coo_y != - 1{
+			path = hexagons.path_to_hexa_x(app.pos_select_x, app.pos_select_y, coo_x - app.dec_x, coo_y - app.dec_y, app.world_map.len + app.dec_x, app.world_map[0].len + app.dec_y)
+		}
+	}
+	hexagons.draw_colored_map_x(app.ctx, app.dec_x, app.dec_y, app.radius, app.world_map, path,
 		transparency)
 	txt := app.player_liste[app.player_id_turn]
 	playint.text_rect_render(app.ctx, app.text_cfg, 32, 32, true, true, txt, transparency)
@@ -228,8 +236,6 @@ fn check_placement(mut app App) {
 				]
 			}
 		}
-		println(hexagons.path_to_hexa_x(0, 0, coo_x, coo_y, app.world_map.len + app.dec_x,
-			app.world_map[0].len + app.dec_y))
 	}
 }
 
@@ -243,42 +249,7 @@ fn check_unit_interaction(mut app App) {
 		coo_y -= app.dec_y
 
 		if coo_x >= 0 && coo_y >= 0 {
-			if !app.in_selection && app.world_map[coo_x][coo_y].len > 1 {
-				tempo := app.world_map[coo_x][coo_y].pop()
-				if tempo is Troops {
-					if tempo.team_nb == app.player_id_turn {
-						app.troop_select = tempo
-
-						app.pos_select_x = coo_x
-						app.pos_select_y = coo_y
-
-						app.in_selection = true
-					} else {
-						app.world_map[coo_x][coo_y] << [tempo]
-					}
-				} else {
-					panic('${tempo} is not Troops')
-				}
-			} else if app.in_selection {
-				if app.world_map[coo_x][coo_y].len < 2 {
-					app.world_map[coo_x][coo_y] << [
-						Troops{
-							color:   app.troop_select.color
-							team_nb: app.troop_select.team_nb
-							id:      app.troop_select.id
-						},
-					]
-				} else {
-					app.world_map[app.pos_select_x][app.pos_select_y] << [
-						Troops{
-							color:   app.troop_select.color
-							team_nb: app.troop_select.team_nb
-							id:      app.troop_select.id
-						},
-					]
-				}
-				app.in_selection = false
-			}
+			units_interactions(mut app, coo_x, coo_y)
 		}
 	}
 }
@@ -287,6 +258,49 @@ fn cam_move(mut app Appli, move_x int, move_y int) {
 	if mut app is App {
 		app.dec_x += move_x
 		app.dec_y += move_y
+	}
+}
+
+fn units_interactions(mut app App, coo_x int, coo_y int){
+	if !app.in_selection && app.world_map[coo_x][coo_y].len > 1 {
+		tempo := app.world_map[coo_x][coo_y].pop()
+		if tempo is Troops {
+			if tempo.team_nb == app.player_id_turn {
+				app.troop_select = tempo
+
+				app.pos_select_x = coo_x
+				app.pos_select_y = coo_y
+
+				app.in_selection = true
+			} else {
+				app.world_map[coo_x][coo_y] << [tempo]
+			}
+		} else {
+			panic('${tempo} is not Troops')
+		}
+	} else if app.in_selection {
+		
+		path := hexagons.path_to_hexa_x(app.pos_select_x, app.pos_select_y, coo_x, coo_y, app.world_map.len + app.dec_x, app.world_map[0].len + app.dec_y)
+		mvt := app.players_units_liste[app.player_id_turn][app.troop_select.id].mouvements
+		if app.world_map[coo_x][coo_y].len < 2 && path.len - 1 <= mvt {
+			app.world_map[coo_x][coo_y] << [
+				Troops{
+					color:   app.troop_select.color
+					team_nb: app.troop_select.team_nb
+					id:      app.troop_select.id
+				},
+			]
+			app.players_units_liste[app.player_id_turn][app.troop_select.id].mouvements -= path.len - 1
+		} else {
+			app.world_map[app.pos_select_x][app.pos_select_y] << [
+				Troops{
+					color:   app.troop_select.color
+					team_nb: app.troop_select.team_nb
+					id:      app.troop_select.id
+				},
+			]
+		}
+		app.in_selection = false
 	}
 }
 
@@ -449,6 +463,7 @@ interface Units {
 	select_render(gg.Context, int, App, u8)
 mut:
 	pv int
+	mouvements int
 }
 
 // for referencing in app.world_map
