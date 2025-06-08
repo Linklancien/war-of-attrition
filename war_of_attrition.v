@@ -18,8 +18,8 @@ mut:
 	player_color []gx.Color
 
 	playing bool
-	// for the main menu
 
+	// for the main menu
 	// for placement turns
 	in_placement_turns         bool
 	players_units_to_place_ids [][]int
@@ -37,8 +37,8 @@ mut:
 	// important for save
 	world_map           [][][]Hexa_tile
 	players_units_liste [][]Units
-	//
 
+	//
 	in_selection bool
 	pos_select_x int
 	pos_select_y int
@@ -68,6 +68,7 @@ fn main() {
 		sample_count:  4
 		font_path:     font_path
 	)
+
 	// setup before starting
 	app.player_liste << ['RED', 'BLUE']
 	app.player_color << [gx.Color{125, 0, 0, 255}, gx.Color{0, 0, 125, 255}]
@@ -193,16 +194,17 @@ fn game_render(app App) {
 		transparency = 150
 	}
 	mut path := [][]int{}
-	if app.in_selection{
+	if app.in_selection {
 		coo_x, coo_y := hexagons.coo_ortho_to_hexa_x(app.ctx.mouse_pos_x / app.radius,
 			app.ctx.mouse_pos_y / app.radius, app.world_map.len + app.dec_x, app.world_map[0].len +
 			app.dec_y)
-		if coo_x != -1 && coo_y != - 1{
-			path = hexagons.path_to_hexa_x(app.pos_select_x, app.pos_select_y, coo_x - app.dec_x, coo_y - app.dec_y, app.world_map.len + app.dec_x, app.world_map[0].len + app.dec_y)
+		if coo_x != -1 && coo_y != -1 {
+			path = hexagons.path_to_hexa_x(app.pos_select_x, app.pos_select_y, coo_x - app.dec_x,
+				coo_y - app.dec_y, app.world_map.len + app.dec_x, app.world_map[0].len + app.dec_y)
 		}
 	}
-	hexagons.draw_colored_map_x(app.ctx, app.dec_x, app.dec_y, app.radius, app.world_map, path,
-		transparency)
+	hexagons.draw_colored_map_x(app.ctx, app.dec_x, app.dec_y, app.radius, app.world_map,
+		path, transparency)
 	txt := app.player_liste[app.player_id_turn]
 	playint.text_rect_render(app.ctx, app.text_cfg, 32, 32, true, true, txt, transparency)
 	render_units(app, transparency)
@@ -261,7 +263,7 @@ fn cam_move(mut app Appli, move_x int, move_y int) {
 	}
 }
 
-fn units_interactions(mut app App, coo_x int, coo_y int){
+fn units_interactions(mut app App, coo_x int, coo_y int) {
 	if !app.in_selection && app.world_map[coo_x][coo_y].len > 1 {
 		tempo := app.world_map[coo_x][coo_y].pop()
 		if tempo is Troops {
@@ -279,8 +281,8 @@ fn units_interactions(mut app App, coo_x int, coo_y int){
 			panic('${tempo} is not Troops')
 		}
 	} else if app.in_selection {
-		
-		path := hexagons.path_to_hexa_x(app.pos_select_x, app.pos_select_y, coo_x, coo_y, app.world_map.len + app.dec_x, app.world_map[0].len + app.dec_y)
+		path := hexagons.path_to_hexa_x(app.pos_select_x, app.pos_select_y, coo_x, coo_y,
+			app.world_map.len + app.dec_x, app.world_map[0].len + app.dec_y)
 		mvt := app.players_units_liste[app.player_id_turn][app.troop_select.id].mouvements
 		if app.world_map[coo_x][coo_y].len < 2 && path.len - 1 <= mvt {
 			app.world_map[coo_x][coo_y] << [
@@ -375,6 +377,9 @@ fn end_turn(mut app Appli) {
 			]
 			app.in_selection = false
 		}
+		for mut unit in mut app.players_units_liste[app.player_id_turn] {
+			unit.set_mouvements()
+		}
 		app.in_waiting_screen = true
 	}
 }
@@ -459,11 +464,16 @@ fn render_units(app App, transparency u8) {
 }
 
 interface Units {
+	mouvements_max int
 	render(gg.Context, f32, f32, f32, u8)
 	select_render(gg.Context, int, App, u8)
 mut:
-	pv int
+	pv         int
 	mouvements int
+}
+
+fn (mut unit Units) set_mouvements() {
+	unit.mouvements = unit.mouvements_max
 }
 
 // for referencing in app.world_map
@@ -475,6 +485,7 @@ mut:
 }
 
 struct Soldier {
+	mouvements_max int = 30
 mut:
 	pv         int      = 10
 	mouvements int      = 30
