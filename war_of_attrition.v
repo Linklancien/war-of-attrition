@@ -281,10 +281,9 @@ fn units_interactions(mut app App, coo_x int, coo_y int) {
 			panic('${tempo} is not Troops')
 		}
 	} else if app.in_selection {
-		path := hexagons.path_to_hexa_x(app.pos_select_x, app.pos_select_y, coo_x, coo_y,
-			app.world_map.len + app.dec_x, app.world_map[0].len + app.dec_y)
 		mvt := app.players_units_liste[app.player_id_turn][app.troop_select.id].mouvements
-		distance := hexagons.distance_hexa_x(app.pos_select_x, app.pos_select_y, coo_x, coo_y,)
+		distance := hexagons.distance_hexa_x(app.pos_select_x, app.pos_select_y, coo_x,
+			coo_y)
 		if app.world_map[coo_x][coo_y].len < 2 && distance <= mvt {
 			app.world_map[coo_x][coo_y] << [
 				Troops{
@@ -483,6 +482,8 @@ mut:
 	color   gx.Color = gx.Color{125, 125, 125, 255}
 	team_nb int
 	id      int
+
+	attacks []Attack
 }
 
 struct Soldier {
@@ -491,6 +492,10 @@ mut:
 	pv         int      = 10
 	mouvements int      = 30
 	color      gx.Color = gx.Color{125, 125, 125, 255}
+
+	attacks        []Attack
+	status_effects []int
+	// it len is the nb of timed Effects possibles
 }
 
 fn (sol Soldier) render(ctx gg.Context, radius f32, pos_x f32, pos_y f32, transparency u8) {
@@ -502,4 +507,63 @@ fn (sol Soldier) select_render(ctx gg.Context, id int, app App, transparency u8)
 
 	playint.text_rect_render(app.ctx, app.text_cfg, app.ctx.width - 64, app.ctx.height / 2,
 		true, true, txt, transparency)
+}
+
+// Attack
+
+enum Effet {
+	poison
+	bleed
+
+	end_timed_effects
+
+	damage
+}
+
+struct Attack {
+mut:
+	effects []int
+	// it len is the nb of Effects possibles
+	shapes []Attack_shape
+}
+
+fn (attack Attack) previsualisation(app App) [][]int {
+	mut concerned := [][]int{}
+	for shape in attack.shapes {
+		concerned << shape.form(app)
+	}
+	return concerned
+}
+
+enum Possible_shape {
+	zone
+	line
+	ray
+	// like a line but end up whenever it cross an ennemy
+}
+
+struct Attack_shape {
+mut:
+	range      int
+	shape_type Possible_shape
+}
+
+fn (attack_shape Attack_shape) form(app App) [][]int {
+	len_x := app.world_map.len + app.dec_x
+	len_y := app.world_map[0].len + app.dec_y
+	mut coo_x, mut coo_y := hexagons.coo_ortho_to_hexa_x(app.ctx.mouse_pos_x / app.radius,
+		app.ctx.mouse_pos_y / app.radius, len_x, len_y)
+	dir := hexagons.Direction_x.left
+	match attack_shape.shape_type {
+		.zone {
+			return hexagons.neighbors_hexa_x_in_range(coo_x, coo_y, len_x, len_y, attack_shape.range)
+		}
+		.line {
+			return hexagons.line_hexa_x(coo_x, coo_y, len_x, len_y, dir, attack_shape.range)
+		}
+		.ray {
+			pos_x, pos_y, dist := hexagons.ray_cast_hexa_x(coo_x, coo_y, dir, app.world_map, attack_shape.range, 1)
+			return [[pos_x, pos_y]]
+		}
+	}
 }
