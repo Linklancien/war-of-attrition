@@ -284,7 +284,8 @@ fn units_interactions(mut app App, coo_x int, coo_y int) {
 		path := hexagons.path_to_hexa_x(app.pos_select_x, app.pos_select_y, coo_x, coo_y,
 			app.world_map.len + app.dec_x, app.world_map[0].len + app.dec_y)
 		mvt := app.players_units_liste[app.player_id_turn][app.troop_select.id].mouvements
-		if app.world_map[coo_x][coo_y].len < 2 && path.len - 1 <= mvt {
+		distance := hexagons.distance_hexa_x(app.pos_select_x, app.pos_select_y, coo_x, coo_y,)
+		if app.world_map[coo_x][coo_y].len < 2 && distance <= mvt {
 			app.world_map[coo_x][coo_y] << [
 				Troops{
 					color:   app.troop_select.color
@@ -292,7 +293,7 @@ fn units_interactions(mut app App, coo_x int, coo_y int) {
 					id:      app.troop_select.id
 				},
 			]
-			app.players_units_liste[app.player_id_turn][app.troop_select.id].mouvements -= path.len - 1
+			app.players_units_liste[app.player_id_turn][app.troop_select.id].mouvements -= distance
 		} else {
 			app.world_map[app.pos_select_x][app.pos_select_y] << [
 				Troops{
