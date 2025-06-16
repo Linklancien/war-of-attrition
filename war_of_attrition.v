@@ -206,12 +206,17 @@ fn game_render(app App) {
 	}
 	mut path := [][]int{}
 	if app.in_selection {
-		coo_x, coo_y := hexagons.coo_ortho_to_hexa_x(app.ctx.mouse_pos_x / app.radius,
-			app.ctx.mouse_pos_y / app.radius, app.world_map.len + app.dec_x, app.world_map[0].len +
-			app.dec_y)
-		if coo_x != -1 && coo_y != -1 {
-			path = hexagons.path_to_hexa_x(app.pos_select_x, app.pos_select_y, coo_x - app.dec_x,
-				coo_y - app.dec_y, app.world_map.len + app.dec_x, app.world_map[0].len + app.dec_y)
+		if app.id_capa_select == -1{
+			coo_x, coo_y := hexagons.coo_ortho_to_hexa_x(app.ctx.mouse_pos_x / app.radius,
+				app.ctx.mouse_pos_y / app.radius, app.world_map.len + app.dec_x, app.world_map[0].len +
+				app.dec_y)
+			if coo_x != -1 && coo_y != -1 {
+				path = hexagons.path_to_hexa_x(app.pos_select_x, app.pos_select_y, coo_x - app.dec_x,
+					coo_y - app.dec_y, app.world_map.len + app.dec_x, app.world_map[0].len + app.dec_y)
+			}
+		}
+		else{
+			path = app.players_units_liste[app.player_id_turn][app.troop_select.id].attacks[app.id_capa_select].previsualisation(app)
 		}
 	}
 	hexagons.draw_colored_map_x(app.ctx, app.dec_x, app.dec_y, app.radius, app.world_map,
@@ -311,6 +316,9 @@ fn units_interactions(mut app App, coo_x int, coo_y int) {
 	} else if app.in_selection {
 		if app.id_capa_select == -1 {
 			unit_move(mut app, coo_x, coo_y)
+		}
+		else{
+			app.players_units_liste[app.player_id_turn][app.troop_select.id].attacks[app.id_capa_select].fire(mut app)
 		}
 
 		app.id_capa_select = -1
@@ -560,7 +568,7 @@ enum Effet {
 
 struct Attack {
 mut:
-	effects []int
+	effects [][]int
 	// it len is the nb of Effects possibles
 	shapes []Attack_shape
 }
@@ -571,6 +579,19 @@ fn (attack Attack) previsualisation(app App) [][]int {
 		concerned << shape.form(app)
 	}
 	return concerned
+}
+
+fn (attack Attack) fire(mut app App){
+	for id in 0..attack.effects.len {
+		concerned := attack.shapes[id].form(app)
+		for pos in concerned{
+			coo_x := pos[0]
+			coo_y := pos[1]
+			for troop in app.world_map[coo_x][coo_y][1...]{
+				app.players_units_liste[troop.team_nb][troop.id].damage(attack.effects[id])
+			}
+		}
+	}
 }
 
 enum Possible_shape {
