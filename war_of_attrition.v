@@ -39,10 +39,11 @@ mut:
 	players_units_liste [][]Units
 
 	//
-	in_selection bool
-	pos_select_x int
-	pos_select_y int
-	troop_select Troops
+	in_selection   bool
+	pos_select_x   int
+	pos_select_y   int
+	troop_select   Troops
+	id_capa_select int
 }
 
 struct Tile {
@@ -100,6 +101,7 @@ fn main() {
 fn on_init(mut app App) {
 	// app.new_action(function, 'function_name', -1 or int(KeyCode. ))
 	app.new_action(game_start, 'game start', int(KeyCode.enter))
+
 	name := ['camera up', 'camera down', 'camera right', 'camera left']
 	mvt := [[0, -2], [0, 2], [2, 0], [-2, 0]]
 	key := [int(KeyCode.up), int(KeyCode.down), int(KeyCode.right), int(KeyCode.left)]
@@ -109,6 +111,15 @@ fn on_init(mut app App) {
 		app.new_action(fn [move_x, move_y] (mut app Appli) {
 			cam_move(mut app, move_x, move_y)
 		}, name[i], key[i])
+	}
+
+	mut capa_name := []string{len: 10, init: 'capa ${index} shortcut'}
+	capa_keys := [int(KeyCode._0), int(KeyCode._1), int(KeyCode._2), int(KeyCode._3), int(KeyCode._4),
+		int(KeyCode._5), int(KeyCode._6), int(KeyCode._7), int(KeyCode._8), int(KeyCode._9)]
+	for i in 0 .. 10 {
+		app.new_action(fn [i] (mut app Appli) {
+			capa_short_cut(mut app, i)
+		}, capa_name[i], capa_keys[i])
 	}
 }
 
@@ -217,9 +228,10 @@ fn game_render(app App) {
 		txt_nb := 'UNITS TO PLACE: ${len}'
 		playint.text_rect_render(app.ctx, app.text_cfg, app.ctx.width - 128, 32, true,
 			true, txt_nb, transparency)
-		if len > 0{
+		if len > 0 {
 			unit_id := app.players_units_to_place_ids[team][len - 1]
-			app.players_units_liste[team][unit_id].select_render(app.ctx, unit_id, app, transparency)
+			app.players_units_liste[team][unit_id].select_render(app.ctx, unit_id, app,
+				transparency)
 		}
 	}
 }
@@ -269,6 +281,16 @@ fn cam_move(mut app Appli, move_x int, move_y int) {
 	}
 }
 
+fn capa_short_cut(mut app Appli, capa int) {
+	if mut app is App {
+		if app.id_capa_select == capa {
+			app.id_capa_select = -1
+		} else if capa < app.players_units_liste[app.player_id_turn][app.troop_select.id].attacks.len {
+			app.id_capa_select = capa
+		}
+	}
+}
+
 fn units_interactions(mut app App, coo_x int, coo_y int) {
 	if !app.in_selection && app.world_map[coo_x][coo_y].len > 1 {
 		tempo := app.world_map[coo_x][coo_y].pop()
@@ -287,28 +309,35 @@ fn units_interactions(mut app App, coo_x int, coo_y int) {
 			panic('${tempo} is not Troops')
 		}
 	} else if app.in_selection {
-		mvt := app.players_units_liste[app.player_id_turn][app.troop_select.id].mouvements
-		distance := hexagons.distance_hexa_x(app.pos_select_x, app.pos_select_y, coo_x,
-			coo_y)
-		if app.world_map[coo_x][coo_y].len < 2 && distance <= mvt {
-			app.world_map[coo_x][coo_y] << [
-				Troops{
-					color:   app.troop_select.color
-					team_nb: app.troop_select.team_nb
-					id:      app.troop_select.id
-				},
-			]
-			app.players_units_liste[app.player_id_turn][app.troop_select.id].mouvements -= distance
-		} else {
-			app.world_map[app.pos_select_x][app.pos_select_y] << [
-				Troops{
-					color:   app.troop_select.color
-					team_nb: app.troop_select.team_nb
-					id:      app.troop_select.id
-				},
-			]
+		if app.id_capa_select == -1 {
+			unit_move(mut app, coo_x, coo_y)
 		}
+
+		app.id_capa_select = -1
 		app.in_selection = false
+	}
+}
+
+fn unit_move(mut app App, coo_x int, coo_y int) {
+	mvt := app.players_units_liste[app.player_id_turn][app.troop_select.id].mouvements
+	distance := hexagons.distance_hexa_x(app.pos_select_x, app.pos_select_y, coo_x, coo_y)
+	if app.world_map[coo_x][coo_y].len < 2 && distance <= mvt {
+		app.world_map[coo_x][coo_y] << [
+			Troops{
+				color:   app.troop_select.color
+				team_nb: app.troop_select.team_nb
+				id:      app.troop_select.id
+			},
+		]
+		app.players_units_liste[app.player_id_turn][app.troop_select.id].mouvements -= distance
+	} else {
+		app.world_map[app.pos_select_x][app.pos_select_y] << [
+			Troops{
+				color:   app.troop_select.color
+				team_nb: app.troop_select.team_nb
+				id:      app.troop_select.id
+			},
+		]
 	}
 }
 
@@ -365,6 +394,7 @@ fn start_turn_is_actionnable(mut app Appli) bool {
 // end turn
 fn end_turn(mut app Appli) {
 	if mut app is App {
+		// Change the current player
 		if app.player_id_turn == 0 {
 			app.player_id_turn = app.player_liste.len - 1
 			if app.in_placement_turns {
@@ -373,6 +403,8 @@ fn end_turn(mut app Appli) {
 		} else {
 			app.player_id_turn -= 1
 		}
+
+		// reset some variables
 		if app.in_selection {
 			app.world_map[app.pos_select_x][app.pos_select_y] << [
 				Troops{
@@ -386,6 +418,7 @@ fn end_turn(mut app Appli) {
 		for mut unit in mut app.players_units_liste[app.player_id_turn] {
 			unit.set_mouvements()
 		}
+		app.id_capa_select = -1
 		app.in_waiting_screen = true
 	}
 }
@@ -476,6 +509,7 @@ interface Units {
 mut:
 	pv         int
 	mouvements int
+	attacks    []Attack
 }
 
 fn (mut unit Units) set_mouvements() {
@@ -488,8 +522,6 @@ mut:
 	color   gx.Color = gx.Color{125, 125, 125, 255}
 	team_nb int
 	id      int
-
-	attacks []Attack
 }
 
 struct Soldier {
