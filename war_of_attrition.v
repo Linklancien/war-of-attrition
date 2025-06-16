@@ -212,9 +212,15 @@ fn game_render(app App) {
 		txt_plac := 'PLACEMENT TURNS'
 		playint.text_rect_render(app.ctx, app.text_cfg, app.ctx.width / 2, 32, true, true,
 			txt_plac, transparency)
-		txt_nb := 'UNITS TO PLACE: ${app.players_units_to_place_ids[app.player_id_turn].len}'
+		team := app.player_id_turn
+		len := app.players_units_to_place_ids[team].len
+		txt_nb := 'UNITS TO PLACE: ${len}'
 		playint.text_rect_render(app.ctx, app.text_cfg, app.ctx.width - 128, 32, true,
 			true, txt_nb, transparency)
+		if len > 0{
+			unit_id := app.players_units_to_place_ids[team][len - 1]
+			app.players_units_liste[team][unit_id].select_render(app.ctx, unit_id, app, transparency)
+		}
 	}
 }
 
@@ -562,7 +568,8 @@ fn (attack_shape Attack_shape) form(app App) [][]int {
 			return hexagons.line_hexa_x(coo_x, coo_y, len_x, len_y, dir, attack_shape.range)
 		}
 		.ray {
-			pos_x, pos_y, dist := hexagons.ray_cast_hexa_x(coo_x, coo_y, dir, app.world_map, attack_shape.range, 1)
+			pos_x, pos_y, dist := hexagons.ray_cast_hexa_x(coo_x, coo_y, dir, app.world_map,
+				attack_shape.range, 1)
 			return [[pos_x, pos_y]]
 		}
 	}
