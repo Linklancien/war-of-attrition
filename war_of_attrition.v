@@ -433,8 +433,14 @@ fn (mut unit Units) set_mouvements() {
 	unit.mouvements = unit.mouvements_max
 }
 
+fn (mut unit Units) status_change(app App){
+	for id, mut value in unit.status_effects{
+		value = app.effects_functions[id](mut unit, value)
+	}
+}
+
 fn (mut unit Units) damage(effects []int, app App) {
-	for value, id in effects {
+	for id, value in effects {
 		if id < int(Effects.end_timed_effects) {
 			unit.status_effects[id] += value
 		} else if id < int(Effects.end_effects) && id != int(Effects.end_timed_effects) {
@@ -459,7 +465,7 @@ mut:
 	color      gx.Color = gx.Color{125, 125, 125, 255}
 
 	capas          []Capa
-	status_effects []int
+	status_effects []int = []int{len: int(Effects.end_timed_effects)}
 	// it len is the nb of timed Effects possibles
 }
 
@@ -468,7 +474,11 @@ fn (sol Soldier) render(ctx gg.Context, radius f32, pos_x f32, pos_y f32, transp
 }
 
 fn (sol Soldier) select_render(ctx gg.Context, id int, app App, transparency u8) {
-	txt := 'UNIT Select: \nSoldier ${id} \nPv: ${sol.pv} \nMouvements: ${sol.mouvements}'
+	txt := 'UNIT Select:
+	Soldier ${id}
+	Pv: ${sol.pv}
+	Mouvements: ${sol.mouvements}
+	Status: ${sol.status_effects}'
 
 	playint.text_rect_render(app.ctx, app.text_cfg, app.ctx.width - 64, app.ctx.height / 2,
 		true, true, txt, transparency)
@@ -533,13 +543,21 @@ fn (attack_shape Attack_shape) forme(app App) [][]int {
 	len_y := app.world_map[0].len + app.dec_y
 	mut coo_x, mut coo_y := hexagons.coo_ortho_to_hexa_x(app.ctx.mouse_pos_x / app.radius,
 		app.ctx.mouse_pos_y / app.radius, len_x, len_y)
+
+	coo_x -= app.dec_x
+	coo_y -= app.dec_y
+
 	dir := hexagons.Direction_x.left
+	mut concerned := [[coo_x, coo_y]]
+
 	match attack_shape.shape_type {
 		.zone {
-			return hexagons.neighbors_hexa_x_in_range(coo_x, coo_y, len_x, len_y, attack_shape.range)
+			concerned << hexagons.neighbors_hexa_x_in_range(coo_x, coo_y, len_x, len_y, attack_shape.range)
+			return concerned
 		}
 		.line {
-			return hexagons.line_hexa_x(coo_x, coo_y, len_x, len_y, dir, attack_shape.range)
+			concerned << hexagons.line_hexa_x(coo_x, coo_y, len_x, len_y, dir, attack_shape.range)
+			return concerned
 		}
 		.ray {
 			pos_x, pos_y, dist := hexagons.ray_cast_hexa_x(coo_x, coo_y, dir, app.world_map,
@@ -563,11 +581,17 @@ enum Effects {
 
 // timed
 fn poison_fn(mut unit Units, value int) int {
+	if value <= 0{
+		return 0
+	}
 	unit.pv -= 1
 	return value - 1
 }
 
 fn bleed_fn(mut unit Units, value int) int {
+	if value <= 0{
+		return 0
+	}
 	unit.pv -= 1
 	return value - 1
 }
@@ -661,6 +685,7 @@ fn end_turn(mut app Appli) {
 		}
 		for mut unit in mut app.players_units_liste[app.player_id_turn] {
 			unit.set_mouvements()
+			unit.status_change(app)
 		}
 		app.id_capa_select = -1
 		app.in_waiting_screen = true
