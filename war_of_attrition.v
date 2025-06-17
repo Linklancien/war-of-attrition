@@ -539,7 +539,7 @@ fn (mut capa Capa) use(mut app App) {
 
 struct Test {
 mut:
-	attacks []Attack = []Attack{len:1, init: Attack{effects: [10, 10, 0, 10],range: 1, shape_type: Possible_shape.zone}}
+	attacks []Attack = []Attack{len:1, init: Attack{effects: [10, 10, 0, 10],range: 3, shape_type: Possible_shape.line}}
 }
 
 enum Possible_shape {
@@ -579,13 +579,16 @@ fn (attack Attack) fire(mut app App) {
 fn (attack Attack) forme(app App) [][]int {
 	len_x := app.world_map.len + app.dec_x
 	len_y := app.world_map[0].len + app.dec_y
-	mut coo_x, mut coo_y := hexagons.coo_ortho_to_hexa_x(app.ctx.mouse_pos_x / app.radius,
-		app.ctx.mouse_pos_y / app.radius, len_x, len_y)
+	pos_x := app.ctx.mouse_pos_x / app.radius
+	pos_y := app.ctx.mouse_pos_y / app.radius
+	mut coo_x, mut coo_y := hexagons.coo_ortho_to_hexa_x(pos_x,
+		pos_y, len_x, len_y)
+
+	dir := hexagons.direction_to_pos_x(app.pos_select_x + app.dec_x, app.pos_select_y + app.dec_y, pos_x, pos_y)
 
 	coo_x -= app.dec_x
 	coo_y -= app.dec_y
 
-	dir := hexagons.Direction_x.left
 	mut concerned := [[coo_x, coo_y]]
 
 	match attack.shape_type {
@@ -594,13 +597,15 @@ fn (attack Attack) forme(app App) [][]int {
 			return concerned
 		}
 		.line {
-			concerned << hexagons.line_hexa_x(coo_x, coo_y, len_x, len_y, dir, attack.range)
-			return concerned
+			return hexagons.line_hexa_x(app.pos_select_x, app.pos_select_y, len_x, len_y, dir, attack.range)
 		}
 		.ray {
-			pos_x, pos_y, dist := hexagons.ray_cast_hexa_x(coo_x, coo_y, dir, app.world_map,
+			target_x, target_y, dist := hexagons.ray_cast_hexa_x(app.pos_select_x, app.pos_select_y, dir, app.world_map,
 				attack.range, 1)
-			return [[pos_x, pos_y]]
+			if dist <= attack.range{
+				return [[target_x, target_y]]
+			}
+			return [][]int{}
 		}
 	}
 }
