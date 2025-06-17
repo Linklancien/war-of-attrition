@@ -353,6 +353,7 @@ fn (mut app App) units_interactions(coo_x int, coo_y int) {
 					id:      app.troop_select.id
 				},
 			]
+			app.check_death()
 		}
 
 		app.id_capa_select = -1
@@ -534,12 +535,11 @@ fn (mut capa Capa) use(mut app App) {
 	for attack in capa.attacks {
 		attack.fire(mut app)
 	}
-	app.check_death()
 }
 
 struct Test {
 mut:
-	attacks []Attack = []Attack{len:1, init: Attack{effects: [10, 0, 0, 10],range: 1, shape_type: Possible_shape.zone}}
+	attacks []Attack = []Attack{len:1, init: Attack{effects: [10, 10, 0, 10],range: 1, shape_type: Possible_shape.zone}}
 }
 
 enum Possible_shape {
@@ -569,6 +569,9 @@ fn (attack Attack) fire(mut app App) {
 				app.players_units_liste[troop.team_nb][troop.id].damage(attack.effects,
 					app)
 			}
+		}
+		if coo_x == app.pos_select_x  && coo_y == app.pos_select_y {
+			app.players_units_liste[app.troop_select.team_nb][app.troop_select.id].damage(attack.effects, app)
 		}
 	}
 }
