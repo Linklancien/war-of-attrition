@@ -10,6 +10,8 @@ import math.vec { Vec2 }
 const bg_color = gg.Color{0, 0, 0, 255}
 const font_path = os.resource_abs_path('FontMono.ttf')
 
+type Effect_fn = fn (mut Units, int) int
+
 struct App {
 	playint.Opt
 mut:
@@ -28,8 +30,8 @@ mut:
 	in_waiting_screen bool
 
 	// for the game
-	effects_functions	[]fn (mut Units, int)
-	player_id_turn int
+	effects_functions []Effect_fn
+	player_id_turn    int
 
 	radius f32 = 30
 	dec_x  int = 2
@@ -421,9 +423,9 @@ interface Units {
 	render(gg.Context, f32, f32, f32, u8)
 	select_render(gg.Context, int, App, u8)
 mut:
-	pv         int
-	mouvements int
-	capas      []Capa
+	pv             int
+	mouvements     int
+	capas          []Capa
 	status_effects []int
 }
 
@@ -431,13 +433,12 @@ fn (mut unit Units) set_mouvements() {
 	unit.mouvements = unit.mouvements_max
 }
 
-fn (mut unit Units) damage(effects []int, app App){
-	for value, id in effects{
-		if id < int(Effet.end_timed_effects){
+fn (mut unit Units) damage(effects []int, app App) {
+	for value, id in effects {
+		if id < int(Effects.end_timed_effects) {
 			unit.status_effects[id] += value
-		}
-		else if id < int(Effet.end_effects) && id != int(Effet.end_timed_effects){
-			// execute the function associated
+		} else if id < int(Effects.end_effects) && id != int(Effects.end_timed_effects) {
+			app.effects_functions[id](mut unit, value)
 		}
 	}
 }
@@ -474,7 +475,6 @@ fn (sol Soldier) select_render(ctx gg.Context, id int, app App, transparency u8)
 }
 
 // Attack
-
 interface Capa {
 mut:
 	attacks []Attack
@@ -488,21 +488,10 @@ fn (capa Capa) previsualisation(app App) [][]int {
 	return concerned
 }
 
-fn (mut capa Capa) use(mut app App){
-	for attack in capa.attacks{
+fn (mut capa Capa) use(mut app App) {
+	for attack in capa.attacks {
 		attack.fire(mut app)
 	}
-}
-
-enum Effet {
-	poison
-	bleed
-
-	end_timed_effects
-
-	damage
-
-	end_effects
 }
 
 struct Attack {
@@ -518,8 +507,9 @@ fn (attack Attack) fire(mut app App) {
 		coo_x := pos[0]
 		coo_y := pos[1]
 		for troop in app.world_map[coo_x][coo_y][1..] {
-			if troop is Troops{
-				app.players_units_liste[troop.team_nb][troop.id].damage(attack.effects, app)
+			if troop is Troops {
+				app.players_units_liste[troop.team_nb][troop.id].damage(attack.effects,
+					app)
 			}
 		}
 	}
@@ -557,6 +547,42 @@ fn (attack_shape Attack_shape) forme(app App) [][]int {
 			return [[pos_x, pos_y]]
 		}
 	}
+}
+
+// Effects
+enum Effects {
+	poison
+	bleed
+
+	end_timed_effects
+
+	damage
+
+	end_effects
+}
+
+// timed
+fn poison_fn(mut unit Units, value int) int {
+	unit.pv -= 1
+	return value - 1
+}
+
+fn bleed_fn(mut unit Units, value int) int {
+	unit.pv -= 1
+	return value - 1
+}
+
+// not timed
+fn damage_fn(mut unit Units, value int) int {
+	unit.pv -= value
+	return 0
+}
+
+fn (mut app App) effects_initialistation() {
+	app.effects_functions = []Effect_fn{len: int(Effects.end_effects)}
+	app.effects_functions[int(Effects.poison)] = poison_fn
+	app.effects_functions[int(Effects.bleed)] = bleed_fn
+	app.effects_functions[int(Effects.damage)] = damage_fn
 }
 
 // BOUTONS: ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
