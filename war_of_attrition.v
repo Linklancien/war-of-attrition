@@ -127,9 +127,9 @@ fn on_event(e &gg.Event, mut app App) {
 
 fn on_click(x f32, y f32, button gg.MouseButton, mut app App) {
 	if app.in_placement_turns {
-		check_placement(mut app)
+		app.check_placement()
 	} else {
-		check_unit_interaction(mut app)
+		app.check_unit_interaction()
 	}
 
 	app.check_buttons_options()
@@ -285,7 +285,7 @@ fn game_render(app App) {
 	}
 }
 
-fn check_placement(mut app App) {
+fn (mut app App) check_placement() {
 	if app.playing && !app.in_waiting_screen {
 		mut coo_x, mut coo_y := hexagons.coo_ortho_to_hexa_x(app.ctx.mouse_pos_x / app.radius,
 			app.ctx.mouse_pos_y / app.radius, app.world_map.len + app.dec_x, app.world_map[0].len +
@@ -309,7 +309,7 @@ fn check_placement(mut app App) {
 }
 
 
-fn check_unit_interaction(mut app App) {
+fn (mut app App) check_unit_interaction() {
 	if app.playing && !app.in_waiting_screen {
 		mut coo_x, mut coo_y := hexagons.coo_ortho_to_hexa_x(app.ctx.mouse_pos_x / app.radius,
 			app.ctx.mouse_pos_y / app.radius, app.world_map.len + app.dec_x, app.world_map[0].len +
@@ -319,12 +319,12 @@ fn check_unit_interaction(mut app App) {
 		coo_y -= app.dec_y
 
 		if coo_x >= 0 && coo_y >= 0 {
-			units_interactions(mut app, coo_x, coo_y)
+			app.units_interactions(coo_x, coo_y)
 		}
 	}
 }
 
-fn units_interactions(mut app App, coo_x int, coo_y int) {
+fn (mut app App) units_interactions(coo_x int, coo_y int) {
 	if !app.in_selection && app.world_map[coo_x][coo_y].len > 1 {
 		tempo := app.world_map[coo_x][coo_y].pop()
 		if tempo is Troops {
@@ -380,6 +380,25 @@ fn unit_move(mut app App, coo_x int, coo_y int) {
 				id:      app.troop_select.id
 			},
 		]
+	}
+}
+
+fn (mut app App) check_death() {
+	for x in 0..app.world_map.len{
+		for y in 0..app.world_map[0].len{
+			mut correctif_id := 0
+			for id in 1..app.world_map[x][y].len{
+				troop := app.world_map[x][y][id - correctif_id]
+				if troop is Troops{
+					team := troop.team_nb
+					index := troop.id
+					if app.players_units_liste[team][index].pv <= 0{
+						app.world_map[x][y].delete(id - correctif_id)
+						correctif_id += 1
+					}
+				}
+			}
+		}
 	}
 }
 
@@ -515,6 +534,7 @@ fn (mut capa Capa) use(mut app App) {
 	for attack in capa.attacks {
 		attack.fire(mut app)
 	}
+	app.check_death()
 }
 
 struct Test {
@@ -702,6 +722,7 @@ fn end_turn(mut app Appli) {
 			unit.set_mouvements()
 			unit.status_change(app)
 		}
+		app.check_death()
 		app.id_capa_select = -1
 		app.in_waiting_screen = true
 	}
