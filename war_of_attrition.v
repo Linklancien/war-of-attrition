@@ -28,6 +28,7 @@ mut:
 	in_waiting_screen bool
 
 	// for the game
+	effects_functions	[]fn (mut Units, int)
 	player_id_turn int
 
 	radius f32 = 30
@@ -87,9 +88,6 @@ fn main() {
 			]
 		}
 	}
-
-	buttons_initialistation(mut app)
-
 	app.world_map = [][][]Hexa_tile{len: 24, init: [][]Hexa_tile{len: 12, init: []Hexa_tile{len: 1, init: Hexa_tile(Tile{})}}}
 
 	app.init()
@@ -99,28 +97,8 @@ fn main() {
 }
 
 fn on_init(mut app App) {
-	// app.new_action(function, 'function_name', -1 or int(KeyCode. ))
-	app.new_action(game_start, 'game start', int(KeyCode.enter))
-
-	name := ['camera up', 'camera down', 'camera right', 'camera left']
-	mvt := [[0, -2], [0, 2], [2, 0], [-2, 0]]
-	key := [int(KeyCode.up), int(KeyCode.down), int(KeyCode.right), int(KeyCode.left)]
-	for i in 0 .. 4 {
-		move_x := mvt[i][0]
-		move_y := mvt[i][1]
-		app.new_action(fn [move_x, move_y] (mut app Appli) {
-			cam_move(mut app, move_x, move_y)
-		}, name[i], key[i])
-	}
-
-	mut capa_name := []string{len: 10, init: 'capa ${index} shortcut'}
-	capa_keys := [int(KeyCode._0), int(KeyCode._1), int(KeyCode._2), int(KeyCode._3), int(KeyCode._4),
-		int(KeyCode._5), int(KeyCode._6), int(KeyCode._7), int(KeyCode._8), int(KeyCode._9)]
-	for i in 0 .. 10 {
-		app.new_action(fn [i] (mut app Appli) {
-			capa_short_cut(mut app, i)
-		}, capa_name[i], capa_keys[i])
-	}
+	app.buttons_initialistation()
+	app.actions_initialistation()
 }
 
 fn on_frame(mut app App) {
@@ -168,7 +146,68 @@ fn on_resized(e &gg.Event, mut app App) {
 	app.ctx.height = size.height
 }
 
-// main menu fn:
+// APP INIT: //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+fn (mut app App) buttons_initialistation() {
+	app.buttons_list << [
+		Button{
+			text:           'START'
+			pos:            Vec2[f32]{
+				x: app.ctx.width / 2
+				y: app.ctx.height / 2 + 32
+			}
+			function:       game_start
+			is_visible:     start_is_visible
+			is_actionnable: start_is_actionnable
+		},
+		Button{
+			text:           'START TURN'
+			pos:            Vec2[f32]{
+				x: app.ctx.width / 2
+				y: app.ctx.height / 2 + 32
+			}
+			function:       start_turn
+			is_visible:     start_turn_is_visible
+			is_actionnable: start_turn_is_actionnable
+		},
+		Button{
+			text:           'END TURN'
+			pos:            Vec2[f32]{
+				x: app.ctx.width / 2
+				y: app.ctx.height - 32
+			}
+			function:       end_turn
+			is_visible:     end_turn_is_visible
+			is_actionnable: end_turn_is_actionnable
+		},
+	]
+}
+
+fn (mut app App) actions_initialistation() {
+	// app.new_action(function, 'function_name', -1 or int(KeyCode. ))
+	app.new_action(game_start, 'game start', int(KeyCode.enter))
+
+	name := ['camera up', 'camera down', 'camera right', 'camera left']
+	mvt := [[0, -2], [0, 2], [2, 0], [-2, 0]]
+	key := [int(KeyCode.up), int(KeyCode.down), int(KeyCode.right), int(KeyCode.left)]
+	for i in 0 .. 4 {
+		move_x := mvt[i][0]
+		move_y := mvt[i][1]
+		app.new_action(fn [move_x, move_y] (mut app Appli) {
+			cam_move(mut app, move_x, move_y)
+		}, name[i], key[i])
+	}
+
+	mut capa_name := []string{len: 10, init: 'capa ${index} shortcut'}
+	capa_keys := [int(KeyCode._0), int(KeyCode._1), int(KeyCode._2), int(KeyCode._3), int(KeyCode._4),
+		int(KeyCode._5), int(KeyCode._6), int(KeyCode._7), int(KeyCode._8), int(KeyCode._9)]
+	for i in 0 .. 10 {
+		app.new_action(fn [i] (mut app Appli) {
+			capa_short_cut(mut app, i)
+		}, capa_name[i], capa_keys[i])
+	}
+}
+
+// main menu fn: //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 fn main_menu_render(app App) {
 	// Main title
 	mut transparency := u8(255)
@@ -198,7 +237,7 @@ fn waiting_screen_render(app App) {
 		true, true, txt, transparency)
 }
 
-// game fn:
+// game fn: ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 fn game_render(app App) {
 	mut transparency := u8(255)
 	if app.changing_options {
@@ -264,21 +303,6 @@ fn check_placement(mut app App) {
 	}
 }
 
-fn check_unit_interaction(mut app App) {
-	if app.playing && !app.in_waiting_screen {
-		mut coo_x, mut coo_y := hexagons.coo_ortho_to_hexa_x(app.ctx.mouse_pos_x / app.radius,
-			app.ctx.mouse_pos_y / app.radius, app.world_map.len + app.dec_x, app.world_map[0].len +
-			app.dec_y)
-
-		coo_x -= app.dec_x
-		coo_y -= app.dec_y
-
-		if coo_x >= 0 && coo_y >= 0 {
-			units_interactions(mut app, coo_x, coo_y)
-		}
-	}
-}
-
 fn cam_move(mut app Appli, move_x int, move_y int) {
 	if mut app is App {
 		app.dec_x += move_x
@@ -292,6 +316,21 @@ fn capa_short_cut(mut app Appli, capa int) {
 			app.id_capa_select = -1
 		} else if capa < app.players_units_liste[app.player_id_turn][app.troop_select.id].capas.len {
 			app.id_capa_select = capa
+		}
+	}
+}
+
+fn check_unit_interaction(mut app App) {
+	if app.playing && !app.in_waiting_screen {
+		mut coo_x, mut coo_y := hexagons.coo_ortho_to_hexa_x(app.ctx.mouse_pos_x / app.radius,
+			app.ctx.mouse_pos_y / app.radius, app.world_map.len + app.dec_x, app.world_map[0].len +
+			app.dec_y)
+
+		coo_x -= app.dec_x
+		coo_y -= app.dec_y
+
+		if coo_x >= 0 && coo_y >= 0 {
+			units_interactions(mut app, coo_x, coo_y)
 		}
 	}
 }
@@ -346,138 +385,6 @@ fn unit_move(mut app App, coo_x int, coo_y int) {
 			},
 		]
 	}
-}
-
-// BOUTONS:
-// start
-fn game_start(mut app Appli) {
-	if mut app is App {
-		if !app.playing {
-			app.playing = true
-			app.in_waiting_screen = true
-			app.in_placement_turns = true
-			app.player_id_turn = app.player_liste.len - 1
-		}
-	}
-	if mut app is playint.Opt {
-	}
-}
-
-fn start_is_visible(mut app Appli) bool {
-	if mut app is App {
-		return !app.playing
-	}
-	return false
-}
-
-fn start_is_actionnable(mut app Appli) bool {
-	if mut app is App {
-		return !app.playing && !app.changing_options
-	}
-	return false
-}
-
-// start turn
-fn start_turn(mut app Appli) {
-	if mut app is App {
-		app.in_waiting_screen = false
-	}
-}
-
-fn start_turn_is_visible(mut app Appli) bool {
-	if mut app is App {
-		return app.playing && app.in_waiting_screen
-	}
-	return false
-}
-
-fn start_turn_is_actionnable(mut app Appli) bool {
-	if mut app is App {
-		return app.playing && app.in_waiting_screen && !app.changing_options
-	}
-	return false
-}
-
-// end turn
-fn end_turn(mut app Appli) {
-	if mut app is App {
-		// Change the current player
-		if app.player_id_turn == 0 {
-			app.player_id_turn = app.player_liste.len - 1
-			if app.in_placement_turns {
-				app.in_placement_turns = false
-			}
-		} else {
-			app.player_id_turn -= 1
-		}
-
-		// reset some variables
-		if app.in_selection {
-			app.world_map[app.pos_select_x][app.pos_select_y] << [
-				Troops{
-					color:   app.troop_select.color
-					team_nb: app.troop_select.team_nb
-					id:      app.troop_select.id
-				},
-			]
-			app.in_selection = false
-		}
-		for mut unit in mut app.players_units_liste[app.player_id_turn] {
-			unit.set_mouvements()
-		}
-		app.id_capa_select = -1
-		app.in_waiting_screen = true
-	}
-}
-
-fn end_turn_is_visible(mut app Appli) bool {
-	if mut app is App {
-		return app.playing && !app.in_waiting_screen
-	}
-	return false
-}
-
-fn end_turn_is_actionnable(mut app Appli) bool {
-	if mut app is App {
-		return app.playing && !app.in_waiting_screen && !app.changing_options
-	}
-	return false
-}
-
-// APP INIT:
-fn buttons_initialistation(mut app App) {
-	app.buttons_list << [
-		Button{
-			text:           'START'
-			pos:            Vec2[f32]{
-				x: app.ctx.width / 2
-				y: app.ctx.height / 2 + 32
-			}
-			function:       game_start
-			is_visible:     start_is_visible
-			is_actionnable: start_is_actionnable
-		},
-		Button{
-			text:           'START TURN'
-			pos:            Vec2[f32]{
-				x: app.ctx.width / 2
-				y: app.ctx.height / 2 + 32
-			}
-			function:       start_turn
-			is_visible:     start_turn_is_visible
-			is_actionnable: start_turn_is_actionnable
-		},
-		Button{
-			text:           'END TURN'
-			pos:            Vec2[f32]{
-				x: app.ctx.width / 2
-				y: app.ctx.height - 32
-			}
-			function:       end_turn
-			is_visible:     end_turn_is_visible
-			is_actionnable: end_turn_is_actionnable
-		},
-	]
 }
 
 // UNITS
@@ -650,4 +557,100 @@ fn (attack_shape Attack_shape) forme(app App) [][]int {
 			return [[pos_x, pos_y]]
 		}
 	}
+}
+
+// BOUTONS: ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// start
+fn game_start(mut app Appli) {
+	if mut app is App {
+		if !app.playing {
+			app.playing = true
+			app.in_waiting_screen = true
+			app.in_placement_turns = true
+			app.player_id_turn = app.player_liste.len - 1
+		}
+	}
+	if mut app is playint.Opt {
+	}
+}
+
+fn start_is_visible(mut app Appli) bool {
+	if mut app is App {
+		return !app.playing
+	}
+	return false
+}
+
+fn start_is_actionnable(mut app Appli) bool {
+	if mut app is App {
+		return !app.playing && !app.changing_options
+	}
+	return false
+}
+
+// start turn
+fn start_turn(mut app Appli) {
+	if mut app is App {
+		app.in_waiting_screen = false
+	}
+}
+
+fn start_turn_is_visible(mut app Appli) bool {
+	if mut app is App {
+		return app.playing && app.in_waiting_screen
+	}
+	return false
+}
+
+fn start_turn_is_actionnable(mut app Appli) bool {
+	if mut app is App {
+		return app.playing && app.in_waiting_screen && !app.changing_options
+	}
+	return false
+}
+
+// end turn
+fn end_turn(mut app Appli) {
+	if mut app is App {
+		// Change the current player
+		if app.player_id_turn == 0 {
+			app.player_id_turn = app.player_liste.len - 1
+			if app.in_placement_turns {
+				app.in_placement_turns = false
+			}
+		} else {
+			app.player_id_turn -= 1
+		}
+
+		// reset some variables
+		if app.in_selection {
+			app.world_map[app.pos_select_x][app.pos_select_y] << [
+				Troops{
+					color:   app.troop_select.color
+					team_nb: app.troop_select.team_nb
+					id:      app.troop_select.id
+				},
+			]
+			app.in_selection = false
+		}
+		for mut unit in mut app.players_units_liste[app.player_id_turn] {
+			unit.set_mouvements()
+		}
+		app.id_capa_select = -1
+		app.in_waiting_screen = true
+	}
+}
+
+fn end_turn_is_visible(mut app Appli) bool {
+	if mut app is App {
+		return app.playing && !app.in_waiting_screen
+	}
+	return false
+}
+
+fn end_turn_is_actionnable(mut app Appli) bool {
+	if mut app is App {
+		return app.playing && !app.in_waiting_screen && !app.changing_options
+	}
+	return false
 }
