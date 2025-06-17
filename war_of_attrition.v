@@ -206,17 +206,17 @@ fn game_render(app App) {
 	}
 	mut path := [][]int{}
 	if app.in_selection {
-		if app.id_capa_select == -1{
+		if app.id_capa_select == -1 {
 			coo_x, coo_y := hexagons.coo_ortho_to_hexa_x(app.ctx.mouse_pos_x / app.radius,
-				app.ctx.mouse_pos_y / app.radius, app.world_map.len + app.dec_x, app.world_map[0].len +
-				app.dec_y)
+				app.ctx.mouse_pos_y / app.radius, app.world_map.len + app.dec_x,
+				app.world_map[0].len + app.dec_y)
 			if coo_x != -1 && coo_y != -1 {
 				path = hexagons.path_to_hexa_x(app.pos_select_x, app.pos_select_y, coo_x - app.dec_x,
-					coo_y - app.dec_y, app.world_map.len + app.dec_x, app.world_map[0].len + app.dec_y)
+					coo_y - app.dec_y, app.world_map.len + app.dec_x, app.world_map[0].len +
+					app.dec_y)
 			}
-		}
-		else{
-			path = app.players_units_liste[app.player_id_turn][app.troop_select.id].attacks[app.id_capa_select].previsualisation(app)
+		} else {
+			path = app.players_units_liste[app.player_id_turn][app.troop_select.id].capas[app.id_capa_select].previsualisation(app)
 		}
 	}
 	hexagons.draw_colored_map_x(app.ctx, app.dec_x, app.dec_y, app.radius, app.world_map,
@@ -290,7 +290,7 @@ fn capa_short_cut(mut app Appli, capa int) {
 	if mut app is App {
 		if app.id_capa_select == capa {
 			app.id_capa_select = -1
-		} else if capa < app.players_units_liste[app.player_id_turn][app.troop_select.id].attacks.len {
+		} else if capa < app.players_units_liste[app.player_id_turn][app.troop_select.id].capas.len {
 			app.id_capa_select = capa
 		}
 	}
@@ -316,9 +316,8 @@ fn units_interactions(mut app App, coo_x int, coo_y int) {
 	} else if app.in_selection {
 		if app.id_capa_select == -1 {
 			unit_move(mut app, coo_x, coo_y)
-		}
-		else{
-			app.players_units_liste[app.player_id_turn][app.troop_select.id].attacks[app.id_capa_select].fire(mut app)
+		} else {
+			app.players_units_liste[app.player_id_turn][app.troop_select.id].capas[app.id_capa_select].use(mut app)
 		}
 
 		app.id_capa_select = -1
@@ -517,11 +516,23 @@ interface Units {
 mut:
 	pv         int
 	mouvements int
-	attacks    []Attack
+	capas      []Capa
+	status_effects []int
 }
 
 fn (mut unit Units) set_mouvements() {
 	unit.mouvements = unit.mouvements_max
+}
+
+fn (mut unit Units) damage(effects []int, app App){
+	for value, id in effects{
+		if id < int(Effet.end_timed_effects){
+			unit.status_effects[id] += value
+		}
+		else if id < int(Effet.end_effects) && id != int(Effet.end_timed_effects){
+			// execute the function associated
+		}
+	}
 }
 
 // for referencing in app.world_map
@@ -539,7 +550,7 @@ mut:
 	mouvements int      = 30
 	color      gx.Color = gx.Color{125, 125, 125, 255}
 
-	attacks        []Attack
+	capas          []Capa
 	status_effects []int
 	// it len is the nb of timed Effects possibles
 }
@@ -557,6 +568,25 @@ fn (sol Soldier) select_render(ctx gg.Context, id int, app App, transparency u8)
 
 // Attack
 
+interface Capa {
+mut:
+	attacks []Attack
+}
+
+fn (capa Capa) previsualisation(app App) [][]int {
+	mut concerned := [][]int{}
+	for attack in capa.attacks {
+		concerned << attack.shape.forme(app)
+	}
+	return concerned
+}
+
+fn (mut capa Capa) use(mut app App){
+	for attack in capa.attacks{
+		attack.fire(mut app)
+	}
+}
+
 enum Effet {
 	poison
 	bleed
@@ -564,31 +594,25 @@ enum Effet {
 	end_timed_effects
 
 	damage
+
+	end_effects
 }
 
 struct Attack {
 mut:
-	effects [][]int
+	effects []int
 	// it len is the nb of Effects possibles
-	shapes []Attack_shape
+	shape Attack_shape
 }
 
-fn (attack Attack) previsualisation(app App) [][]int {
-	mut concerned := [][]int{}
-	for shape in attack.shapes {
-		concerned << shape.form(app)
-	}
-	return concerned
-}
-
-fn (attack Attack) fire(mut app App){
-	for id in 0..attack.effects.len {
-		concerned := attack.shapes[id].form(app)
-		for pos in concerned{
-			coo_x := pos[0]
-			coo_y := pos[1]
-			for troop in app.world_map[coo_x][coo_y][1...]{
-				app.players_units_liste[troop.team_nb][troop.id].damage(attack.effects[id])
+fn (attack Attack) fire(mut app App) {
+	concerned := attack.shape.forme(app)
+	for pos in concerned {
+		coo_x := pos[0]
+		coo_y := pos[1]
+		for troop in app.world_map[coo_x][coo_y][1..] {
+			if troop is Troops{
+				app.players_units_liste[troop.team_nb][troop.id].damage(attack.effects, app)
 			}
 		}
 	}
@@ -607,7 +631,7 @@ mut:
 	shape_type Possible_shape
 }
 
-fn (attack_shape Attack_shape) form(app App) [][]int {
+fn (attack_shape Attack_shape) forme(app App) [][]int {
 	len_x := app.world_map.len + app.dec_x
 	len_y := app.world_map[0].len + app.dec_y
 	mut coo_x, mut coo_y := hexagons.coo_ortho_to_hexa_x(app.ctx.mouse_pos_x / app.radius,
