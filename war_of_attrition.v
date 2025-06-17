@@ -496,7 +496,7 @@ mut:
 	mouvements int
 	color      gx.Color = gx.Color{125, 125, 125, 255}
 
-	capas          []Capa = [Test{}]
+	capas          []Capa = [Zone{}, Line{}, Ray{}]
 	status_effects []int = []int{len: int(Effects.end_timed_effects)}
 	// it len is the nb of timed Effects possibles
 }
@@ -537,9 +537,19 @@ fn (mut capa Capa) use(mut app App) {
 	}
 }
 
-struct Test {
+struct Zone {
 mut:
-	attacks []Attack = []Attack{len:1, init: Attack{effects: [10, 10, 0, 10],range: 3, shape_type: Possible_shape.line}}
+	attacks []Attack = []Attack{len:1, init: Attack{effects: [0, 0, 0, 10],range: 1, shape_type: Possible_shape.zone}}
+}
+
+struct Line {
+mut:
+	attacks []Attack = []Attack{len:1, init: Attack{effects: [10, 10, 0, 0],range: 3, shape_type: Possible_shape.line}}
+}
+
+struct Ray {
+mut:
+	attacks []Attack = []Attack{len:1, init: Attack{effects: [5, 5, 0, 5],range: 5, shape_type: Possible_shape.ray}}
 }
 
 enum Possible_shape {
