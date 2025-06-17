@@ -46,7 +46,7 @@ mut:
 	pos_select_x   int
 	pos_select_y   int
 	troop_select   Troops
-	id_capa_select int
+	id_capa_select int = -1
 }
 
 struct Tile {
@@ -101,6 +101,7 @@ fn main() {
 fn on_init(mut app App) {
 	app.buttons_initialistation()
 	app.actions_initialistation()
+	app.effects_initialistation()
 }
 
 fn on_frame(mut app App) {
@@ -269,11 +270,13 @@ fn game_render(app App) {
 		txt_plac := 'PLACEMENT TURNS'
 		playint.text_rect_render(app.ctx, app.text_cfg, app.ctx.width / 2, 32, true, true,
 			txt_plac, transparency)
+
 		team := app.player_id_turn
 		len := app.players_units_to_place_ids[team].len
 		txt_nb := 'UNITS TO PLACE: ${len}'
 		playint.text_rect_render(app.ctx, app.text_cfg, app.ctx.width - 128, 32, true,
 			true, txt_nb, transparency)
+
 		if len > 0 {
 			unit_id := app.players_units_to_place_ids[team][len - 1]
 			app.players_units_liste[team][unit_id].select_render(app.ctx, unit_id, app,
@@ -359,6 +362,13 @@ fn units_interactions(mut app App, coo_x int, coo_y int) {
 			unit_move(mut app, coo_x, coo_y)
 		} else {
 			app.players_units_liste[app.player_id_turn][app.troop_select.id].capas[app.id_capa_select].use(mut app)
+			app.world_map[app.pos_select_x][app.pos_select_y] << [
+				Troops{
+					color:   app.troop_select.color
+					team_nb: app.troop_select.team_nb
+					id:      app.troop_select.id
+				},
+			]
 		}
 
 		app.id_capa_select = -1
@@ -464,7 +474,7 @@ mut:
 	mouvements int      = 30
 	color      gx.Color = gx.Color{125, 125, 125, 255}
 
-	capas          []Capa
+	capas          []Capa = [Test{}]
 	status_effects []int = []int{len: int(Effects.end_timed_effects)}
 	// it len is the nb of timed Effects possibles
 }
@@ -477,8 +487,9 @@ fn (sol Soldier) select_render(ctx gg.Context, id int, app App, transparency u8)
 	txt := 'UNIT Select:
 	Soldier ${id}
 	Pv: ${sol.pv}
-	Mouvements: ${sol.mouvements}
-	Status: ${sol.status_effects}'
+	Mouvements: ${sol.mouvements}/${sol.mouvements_max}
+	Status: ${sol.status_effects}
+	Capas: ${app.id_capa_select}/${sol.capas.len}'
 
 	playint.text_rect_render(app.ctx, app.text_cfg, app.ctx.width - 64, app.ctx.height / 2,
 		true, true, txt, transparency)
@@ -493,7 +504,7 @@ mut:
 fn (capa Capa) previsualisation(app App) [][]int {
 	mut concerned := [][]int{}
 	for attack in capa.attacks {
-		concerned << attack.shape.forme(app)
+		concerned << attack.forme(app)
 	}
 	return concerned
 }
@@ -504,15 +515,30 @@ fn (mut capa Capa) use(mut app App) {
 	}
 }
 
+struct Test {
+mut:
+	attacks []Attack = []Attack{len:1, init: Attack{effects: [10, 0, 0, 10],range: 1, shape_type: Possible_shape.zone}}
+}
+
+enum Possible_shape {
+	zone
+	line
+	ray
+	// like a line but end up whenever it cross an ennemy
+}
+
 struct Attack {
 mut:
-	effects []int
+	effects []int = []int{len: int(Effects.end_effects)}
 	// it len is the nb of Effects possibles
-	shape Attack_shape
+
+	// shape
+	range      int
+	shape_type Possible_shape
 }
 
 fn (attack Attack) fire(mut app App) {
-	concerned := attack.shape.forme(app)
+	concerned := attack.forme(app)
 	for pos in concerned {
 		coo_x := pos[0]
 		coo_y := pos[1]
@@ -525,20 +551,7 @@ fn (attack Attack) fire(mut app App) {
 	}
 }
 
-enum Possible_shape {
-	zone
-	line
-	ray
-	// like a line but end up whenever it cross an ennemy
-}
-
-struct Attack_shape {
-mut:
-	range      int
-	shape_type Possible_shape
-}
-
-fn (attack_shape Attack_shape) forme(app App) [][]int {
+fn (attack Attack) forme(app App) [][]int {
 	len_x := app.world_map.len + app.dec_x
 	len_y := app.world_map[0].len + app.dec_y
 	mut coo_x, mut coo_y := hexagons.coo_ortho_to_hexa_x(app.ctx.mouse_pos_x / app.radius,
@@ -550,18 +563,18 @@ fn (attack_shape Attack_shape) forme(app App) [][]int {
 	dir := hexagons.Direction_x.left
 	mut concerned := [[coo_x, coo_y]]
 
-	match attack_shape.shape_type {
+	match attack.shape_type {
 		.zone {
-			concerned << hexagons.neighbors_hexa_x_in_range(coo_x, coo_y, len_x, len_y, attack_shape.range)
+			concerned << hexagons.neighbors_hexa_x_in_range(coo_x, coo_y, len_x, len_y, attack.range)
 			return concerned
 		}
 		.line {
-			concerned << hexagons.line_hexa_x(coo_x, coo_y, len_x, len_y, dir, attack_shape.range)
+			concerned << hexagons.line_hexa_x(coo_x, coo_y, len_x, len_y, dir, attack.range)
 			return concerned
 		}
 		.ray {
 			pos_x, pos_y, dist := hexagons.ray_cast_hexa_x(coo_x, coo_y, dir, app.world_map,
-				attack_shape.range, 1)
+				attack.range, 1)
 			return [[pos_x, pos_y]]
 		}
 	}
