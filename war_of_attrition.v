@@ -308,22 +308,6 @@ fn check_placement(mut app App) {
 	}
 }
 
-fn cam_move(mut app Appli, move_x int, move_y int) {
-	if mut app is App {
-		app.dec_x += move_x
-		app.dec_y += move_y
-	}
-}
-
-fn capa_short_cut(mut app Appli, capa int) {
-	if mut app is App {
-		if app.id_capa_select == capa {
-			app.id_capa_select = -1
-		} else if capa < app.players_units_liste[app.player_id_turn][app.troop_select.id].capas.len {
-			app.id_capa_select = capa
-		}
-	}
-}
 
 fn check_unit_interaction(mut app App) {
 	if app.playing && !app.in_waiting_screen {
@@ -399,7 +383,25 @@ fn unit_move(mut app App, coo_x int, coo_y int) {
 	}
 }
 
-// UNITS
+// actions for the player
+fn cam_move(mut app Appli, move_x int, move_y int) {
+	if mut app is App {
+		app.dec_x += move_x
+		app.dec_y += move_y
+	}
+}
+
+fn capa_short_cut(mut app Appli, capa int) {
+	if mut app is App {
+		if app.id_capa_select == capa {
+			app.id_capa_select = -1
+		} else if capa < app.players_units_liste[app.player_id_turn][app.troop_select.id].capas.len {
+			app.id_capa_select = capa
+		}
+	}
+}
+
+// UNITS /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 fn render_units(app App, transparency u8) {
 	for coo_x in 0 .. app.world_map.len {
 		for coo_y in 0 .. app.world_map[coo_x].len {
@@ -471,7 +473,7 @@ struct Soldier {
 	mouvements_max int = 30
 mut:
 	pv         int      = 10
-	mouvements int      = 30
+	mouvements int
 	color      gx.Color = gx.Color{125, 125, 125, 255}
 
 	capas          []Capa = [Test{}]
