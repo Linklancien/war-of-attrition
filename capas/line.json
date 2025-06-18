@@ -3,7 +3,7 @@
 "attacks": [{
     "range":      5,
 	"shape_type": 1,
-    "effects": [10, 10, 0, 0, 0, 0]
+    "effects": [2, 3, 0, -1, 0, 0]
 }
 ]
 }

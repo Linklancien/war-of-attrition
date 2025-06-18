@@ -22,8 +22,8 @@ mut:
 
 	playing bool
 
-	list_unit_exist []Units
-	map_capa_exist  map[string]Capas
+	map_unit_exist map[string]Units
+	map_capa_exist map[string]Capas
 
 	// for placement turns:
 	placement_boundaries [][]int
@@ -90,10 +90,11 @@ fn main() {
 	app.units_load()
 
 	for p in 0 .. app.player_liste.len {
-		for _ in 0 .. 10 {
+		list_unit := ['Healer', 'Healer', 'Soldier', 'Soldier']
+		for next in list_unit {
 			app.players_units_to_place_ids[p] << [app.players_units_liste[p].len]
 			app.players_units_liste[p] << [
-				app.list_unit_exist[0],
+				app.map_unit_exist[next],
 			]
 			app.players_units_liste[p][app.players_units_liste[p].len - 1].color = app.player_color[p]
 		}
@@ -188,9 +189,11 @@ fn (mut app App) units_load() {
 			println('dir: ${entry}')
 		} else {
 			temp_units := (os.read_file(path) or { panic('No temp_units to load') })
-			app.list_unit_exist << json.decode(Units, temp_units) or {
+			unit := json.decode(Units, temp_units) or {
 				panic('Failed to decode json, error: ${err}')
 			}
+
+			app.map_unit_exist[unit.name] = unit
 		}
 	}
 }
@@ -300,7 +303,10 @@ fn game_render(app App) {
 
 			coo_x -= app.dec_x
 			coo_y -= app.dec_y
-			if coo_x != -1 && coo_y != -1 {
+			distance := hexagons.distance_hexa_x(app.pos_select_x, app.pos_select_y, coo_x,
+				coo_y)
+			mvt := app.players_units_liste[app.player_id_turn][app.troop_select.id].mouvements
+			if coo_x != -1 && coo_y != -1 && distance <= mvt {
 				path = hexagons.path_to_hexa_x(app.pos_select_x, app.pos_select_y, coo_x,
 					coo_y, app.world_map.len + app.dec_x, app.world_map[0].len + app.dec_y)
 			}
@@ -588,7 +594,7 @@ fn (unit Units) stats_render(ctx gg.Context, id int, app App, transparency u8) {
 	Capas: ${app.id_capa_select}/${unit.capas.len}'
 	if app.id_capa_select > -1 {
 		key := unit.capas[app.id_capa_select]
-		name := Possible_shape.from(app.map_capa_exist[key].attacks[0].shape_type) or {panic('No name found')}
+		name := app.map_capa_exist[key].name
 		txt += ' \n${name}'
 	}
 	playint.text_rect_render(app.ctx, app.text_cfg, app.ctx.width - 64, app.ctx.height / 2,
@@ -626,8 +632,9 @@ enum Possible_shape {
 struct Attack {
 mut:
 	// shape:
-	range      int @[required]
-	shape_type int @[required]
+	max_distance int
+	range        int @[required]
+	shape_type   int @[required]
 
 	effects []int = []int{len: int(Effects.end_effects)} @[required]
 	// it len is the nb of Effects possibles
@@ -670,9 +677,13 @@ fn (attack Attack) forme(app App) [][]int {
 
 	match Possible_shape.from(attack.shape_type) or { panic('') } {
 		.zone {
-			concerned << hexagons.neighbors_hexa_x_in_range(coo_x, coo_y, len_x, len_y,
-				attack.range)
-			return concerned
+			distance := hexagons.distance_hexa_x(app.pos_select_x, app.pos_select_y, coo_x, coo_y)
+			if attack.max_distance >= distance{
+				concerned << hexagons.neighbors_hexa_x_in_range(coo_x, coo_y, len_x, len_y,
+					attack.range)
+				return concerned
+			}
+			return [][]int{}
 		}
 		.line {
 			return hexagons.line_hexa_x(app.pos_select_x, app.pos_select_y, len_x, len_y,
