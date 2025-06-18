@@ -22,11 +22,12 @@ mut:
 
 	playing bool
 
-	list_unit_exist  []Units
+	list_unit_exist []Units
 	list_capa_exist []Capas
 
 	// for placement turns:
 	placement_boundaries [][]int
+
 	// format: [x, max_x, y max_y]
 	in_placement_turns         bool
 	players_units_to_place_ids [][]int
@@ -159,19 +160,20 @@ fn on_resized(e &gg.Event, mut app App) {
 }
 
 // APP INIT: //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 fn (mut app App) capas_load() {
 	entries := os.ls(os.join_path('capas')) or { [] }
 
 	// load capas
 	for entry in entries {
-		path := os.join_path('capas', entry)
-		if os.is_dir(path) {
-			println('dir: ${entry}')
-		} else {
-			temp_capas := (os.read_file(path) or { panic('No temp_capas to load') })
-			app.list_capa_exist << json.decode(Capas, temp_capas) or {
-				panic('Failed to decode json, path: ${path}, error: ${err}')
+		if entry != 'properties.json' {
+			path := os.join_path('capas', entry)
+			if os.is_dir(path) {
+				println('dir: ${entry}')
+			} else {
+				temp_capas := (os.read_file(path) or { panic('No temp_capas to load') })
+				app.list_capa_exist << json.decode(Capas, temp_capas) or {
+					panic('Failed to decode json, path: ${path}, error: ${err}')
+				}
 			}
 		}
 	}
@@ -547,7 +549,7 @@ struct Units {
 mut:
 	mouvements     int
 	pv             int      @[required]
-	capas          []Capas   @[skip]
+	capas          []Capas  @[skip]
 	color          gx.Color = gx.Color{125, 125, 125, 255} @[skip]
 	status_effects []int    = []int{len: int(Effects.end_timed_effects)}    @[skip]
 }
@@ -738,10 +740,12 @@ fn heal_fn(mut unit Units, value int) int {
 
 fn (mut app App) effects_initialistation() {
 	app.effects_functions = []Effect_fn{len: int(Effects.end_effects)}
+
 	// timed
 	app.effects_functions[int(Effects.poison)] = poison_fn
 	app.effects_functions[int(Effects.bleed)] = bleed_fn
 	app.effects_functions[int(Effects.regeneration)] = regeneration_fn
+
 	// not timed
 	app.effects_functions[int(Effects.heal)] = heal_fn
 	app.effects_functions[int(Effects.damage)] = damage_fn
