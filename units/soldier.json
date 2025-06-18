@@ -2,5 +2,15 @@
 "mouvements_max": 10,
 "pv_max": 10,
 "pv": 10,
-"name": "Soldier"
+"name": "Soldier",
+"capas": [{
+"name": "Zone",
+"attacks": [{
+    "range":      1,
+	"shape_type": {"Possible_shape": ["zone"]},
+    "effects":[0, 0, 0, 0, 10, 0]
+}
+]
+}
+]
 }

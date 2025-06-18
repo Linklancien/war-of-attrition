@@ -549,7 +549,7 @@ struct Units {
 mut:
 	mouvements     int
 	pv             int      @[required]
-	capas          []Capas  @[skip]
+	capas          []Capas  
 	color          gx.Color = gx.Color{125, 125, 125, 255} @[skip]
 	status_effects []int    = []int{len: int(Effects.end_timed_effects)}    @[skip]
 }
