@@ -23,6 +23,8 @@ mut:
 
 	// for the main menu
 	// for placement turns
+	placement_boundaries	[][]int
+	// format: [x, max_x, y max_y]
 	in_placement_turns         bool
 	players_units_to_place_ids [][]int
 
@@ -91,6 +93,7 @@ fn main() {
 		}
 	}
 	app.world_map = [][][]Hexa_tile{len: 24, init: [][]Hexa_tile{len: 12, init: []Hexa_tile{len: 1, init: Hexa_tile(Tile{})}}}
+	app.placement_boundaries = [[0, 5, 0, app.world_map[0].len], [app.world_map.len - 5, app.world_map.len, 0, app.world_map[0].len]]
 
 	app.init()
 
@@ -190,7 +193,7 @@ fn (mut app App) actions_initialistation() {
 	app.new_action(game_start, 'game start', int(KeyCode.enter))
 
 	name := ['camera up', 'camera down', 'camera right', 'camera left']
-	mvt := [[0, -2], [0, 2], [2, 0], [-2, 0]]
+	mvt := [[0, 2], [0, -2], [-2, 0], [2, 0]]
 	key := [int(KeyCode.up), int(KeyCode.down), int(KeyCode.right), int(KeyCode.left)]
 	for i in 0 .. 4 {
 		move_x := mvt[i][0]
@@ -249,27 +252,56 @@ fn game_render(app App) {
 	mut path := [][]int{}
 	if app.in_selection {
 		if app.id_capa_select == -1 {
-			coo_x, coo_y := hexagons.coo_ortho_to_hexa_x(app.ctx.mouse_pos_x / app.radius,
+			mut coo_x, mut coo_y := hexagons.coo_ortho_to_hexa_x(app.ctx.mouse_pos_x / app.radius,
 				app.ctx.mouse_pos_y / app.radius, app.world_map.len + app.dec_x,
 				app.world_map[0].len + app.dec_y)
+
+			coo_x -= app.dec_x
+			coo_y -= app.dec_y
 			if coo_x != -1 && coo_y != -1 {
-				path = hexagons.path_to_hexa_x(app.pos_select_x, app.pos_select_y, coo_x - app.dec_x,
-					coo_y - app.dec_y, app.world_map.len + app.dec_x, app.world_map[0].len +
+				path = hexagons.path_to_hexa_x(app.pos_select_x, app.pos_select_y, coo_x,
+					coo_y, app.world_map.len + app.dec_x, app.world_map[0].len +
 					app.dec_y)
 			}
 		} else {
 			path = app.players_units_liste[app.player_id_turn][app.troop_select.id].capas[app.id_capa_select].previsualisation(app)
 		}
 	}
+	if app.in_placement_turns{
+		mut coo_x, mut coo_y := hexagons.coo_ortho_to_hexa_x(app.ctx.mouse_pos_x / app.radius,
+				app.ctx.mouse_pos_y / app.radius, app.world_map.len + app.dec_x,
+				app.world_map[0].len + app.dec_y)
+
+		coo_x -= app.dec_x
+		coo_y -= app.dec_y
+
+		if app.check_placement_possible(coo_x, coo_y){
+			path << [coo_x, coo_y]
+		}
+	}
+
+	// map
 	hexagons.draw_colored_map_x(app.ctx, app.dec_x, app.dec_y, app.radius, app.world_map,
 		path, transparency)
+	
+	// player turn
 	txt := app.player_liste[app.player_id_turn]
 	playint.text_rect_render(app.ctx, app.text_cfg, 32, 32, true, true, txt, transparency)
+
+	// units
 	render_units(app, transparency)
+
+	// placements turns
 	if app.in_placement_turns {
-		txt_plac := 'PLACEMENT TURNS'
+		txt_plac := 'PLACEMENT TURNS
+		boundaries: ${app.placement_boundaries[app.player_id_turn]}'
+		
 		playint.text_rect_render(app.ctx, app.text_cfg, app.ctx.width / 2, 32, true, true,
 			txt_plac, transparency)
+
+		if path.len == 0{
+			playint.text_rect_render(app.ctx, app.text_cfg, app.ctx.width / 2, app.ctx.height / 2, true, true, 'OUT OF BOUNDS', transparency)
+		}
 
 		team := app.player_id_turn
 		len := app.players_units_to_place_ids[team].len
@@ -286,7 +318,7 @@ fn game_render(app App) {
 }
 
 fn (mut app App) check_placement() {
-	if app.playing && !app.in_waiting_screen {
+	if app.playing && !app.in_waiting_screen && !app.buttons_list[2].check(mut app) {
 		mut coo_x, mut coo_y := hexagons.coo_ortho_to_hexa_x(app.ctx.mouse_pos_x / app.radius,
 			app.ctx.mouse_pos_y / app.radius, app.world_map.len + app.dec_x, app.world_map[0].len +
 			app.dec_y)
@@ -294,7 +326,7 @@ fn (mut app App) check_placement() {
 		coo_x -= app.dec_x
 		coo_y -= app.dec_y
 
-		if coo_x >= 0 && coo_y >= 0 {
+		if coo_x >= 0 && coo_y >= 0 && app.check_placement_possible(coo_x, coo_y) {
 			if app.players_units_to_place_ids[app.player_id_turn].len > 0
 				&& app.world_map[coo_x][coo_y].len < 2 {
 				app.world_map[coo_x][coo_y] << [
@@ -306,6 +338,11 @@ fn (mut app App) check_placement() {
 			}
 		}
 	}
+}
+
+fn (app App) check_placement_possible(coo_x int, coo_y int) bool{
+	boundaries := app.placement_boundaries[app.player_id_turn]
+	return boundaries[0] <= coo_x && coo_x < boundaries[1] && boundaries[2] <= coo_y && coo_y < boundaries[3]
 }
 
 
@@ -506,13 +543,15 @@ fn (sol Soldier) render(ctx gg.Context, radius f32, pos_x f32, pos_y f32, transp
 }
 
 fn (sol Soldier) select_render(ctx gg.Context, id int, app App, transparency u8) {
-	txt := 'UNIT Select:
+	mut txt := 'UNIT Select:
 	Soldier ${id}
 	Pv: ${sol.pv}
 	Mouvements: ${sol.mouvements}/${sol.mouvements_max}
 	Status: ${sol.status_effects}
 	Capas: ${app.id_capa_select}/${sol.capas.len}'
-
+	if app.id_capa_select > -1{
+		txt += ' \n${sol.capas[app.id_capa_select].attacks[0].shape_type}'
+	}
 	playint.text_rect_render(app.ctx, app.text_cfg, app.ctx.width - 64, app.ctx.height / 2,
 		true, true, txt, transparency)
 }
@@ -574,14 +613,16 @@ fn (attack Attack) fire(mut app App) {
 	for pos in concerned {
 		coo_x := pos[0]
 		coo_y := pos[1]
-		for troop in app.world_map[coo_x][coo_y][1..] {
-			if troop is Troops {
-				app.players_units_liste[troop.team_nb][troop.id].damage(attack.effects,
-					app)
+		if coo_x >= 0 && coo_y >= 0{
+			for troop in app.world_map[coo_x][coo_y][1..] {
+				if troop is Troops {
+					app.players_units_liste[troop.team_nb][troop.id].damage(attack.effects,
+						app)
+				}
 			}
-		}
-		if coo_x == app.pos_select_x  && coo_y == app.pos_select_y {
-			app.players_units_liste[app.troop_select.team_nb][app.troop_select.id].damage(attack.effects, app)
+			if coo_x == app.pos_select_x  && coo_y == app.pos_select_y {
+				app.players_units_liste[app.troop_select.team_nb][app.troop_select.id].damage(attack.effects, app)
+			}
 		}
 	}
 }
@@ -612,7 +653,7 @@ fn (attack Attack) forme(app App) [][]int {
 		.ray {
 			target_x, target_y, dist := hexagons.ray_cast_hexa_x(app.pos_select_x, app.pos_select_y, dir, app.world_map,
 				attack.range, 1)
-			if dist <= attack.range{
+			if 0 < dist && dist <= attack.range{
 				return [[target_x, target_y]]
 			}
 			return [][]int{}
@@ -662,7 +703,7 @@ fn (mut app App) effects_initialistation() {
 	app.effects_functions[int(Effects.damage)] = damage_fn
 }
 
-// BOUTONS: ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Buttons: ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // start
 fn game_start(mut app Appli) {
 	if mut app is App {
