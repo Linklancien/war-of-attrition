@@ -1,0 +1,9 @@
+{
+"name": "Line",
+"attacks": [{
+    "range":      5,
+	"shape_type": {"Possible_shape": ["line"]},
+    "effects":[10, 10, 0, 0]
+}
+]
+}

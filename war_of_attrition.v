@@ -22,7 +22,8 @@ mut:
 
 	playing bool
 
-	list_unit_exist []Units
+	list_unit_exist  []Units
+	list_capa_exist []Capas
 
 	// for placement turns:
 	placement_boundaries [][]int
@@ -84,6 +85,7 @@ fn main() {
 	app.players_units_liste = [][]Units{len: app.player_liste.len, init: []Units{}}
 	app.players_units_to_place_ids = [][]int{len: app.player_liste.len, init: []int{}}
 
+	app.capas_load()
 	app.units_load()
 
 	for p in 0 .. app.player_liste.len {
@@ -157,6 +159,23 @@ fn on_resized(e &gg.Event, mut app App) {
 }
 
 // APP INIT: //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+fn (mut app App) capas_load() {
+	entries := os.ls(os.join_path('capas')) or { [] }
+
+	// load capas
+	for entry in entries {
+		path := os.join_path('capas', entry)
+		if os.is_dir(path) {
+			println('dir: ${entry}')
+		} else {
+			temp_capas := (os.read_file(path) or { panic('No temp_capas to load') })
+			app.list_capa_exist << json.decode(Capas, temp_capas) or {
+				panic('Failed to decode json, path: ${path}, error: ${err}')
+			}
+		}
+	}
+}
 
 fn (mut app App) units_load() {
 	entries := os.ls(os.join_path('units')) or { [] }
@@ -528,7 +547,7 @@ struct Units {
 mut:
 	mouvements     int
 	pv             int      @[required]
-	capas          []Capa   @[skip]
+	capas          []Capas   @[skip]
 	color          gx.Color = gx.Color{125, 125, 125, 255} @[skip]
 	status_effects []int    = []int{len: int(Effects.end_timed_effects)}    @[skip]
 }
@@ -572,12 +591,13 @@ fn (unit Units) stats_render(ctx gg.Context, id int, app App, transparency u8) {
 }
 
 // Attack
-interface Capa {
+struct Capas {
+	name string @[required]
 mut:
-	attacks []Attack
+	attacks []Attack @[required]
 }
 
-fn (capa Capa) previsualisation(app App) [][]int {
+fn (capa Capas) previsualisation(app App) [][]int {
 	mut concerned := [][]int{}
 	for attack in capa.attacks {
 		concerned << attack.forme(app)
@@ -585,37 +605,10 @@ fn (capa Capa) previsualisation(app App) [][]int {
 	return concerned
 }
 
-fn (mut capa Capa) use(mut app App) {
+fn (mut capa Capas) use(mut app App) {
 	for attack in capa.attacks {
 		attack.fire(mut app)
 	}
-}
-
-struct Zone {
-mut:
-	attacks []Attack = []Attack{len: 1, init: Attack{
-	effects:    [0, 0, 0, 10]
-	range:      1
-	shape_type: Possible_shape.zone
-}}
-}
-
-struct Line {
-mut:
-	attacks []Attack = []Attack{len: 1, init: Attack{
-	effects:    [10, 10, 0, 0]
-	range:      3
-	shape_type: Possible_shape.line
-}}
-}
-
-struct Ray {
-mut:
-	attacks []Attack = []Attack{len: 1, init: Attack{
-	effects:    [5, 5, 0, 5]
-	range:      5
-	shape_type: Possible_shape.ray
-}}
 }
 
 enum Possible_shape {
@@ -627,12 +620,12 @@ enum Possible_shape {
 
 struct Attack {
 mut:
-	effects []int = []int{len: int(Effects.end_effects)}
-	// it len is the nb of Effects possibles
+	// shape:
+	range      int            @[required]
+	shape_type Possible_shape @[required]
 
-	// shape
-	range      int
-	shape_type Possible_shape
+	effects []int = []int{len: int(Effects.end_effects)} @[required]
+	// it len is the nb of Effects possibles
 }
 
 fn (attack Attack) fire(mut app App) {
