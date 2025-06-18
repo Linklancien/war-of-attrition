@@ -526,11 +526,11 @@ struct Units {
 	pv_max         int    @[required]
 	name           string @[required]
 mut:
-	color          gx.Color = gx.Color{125, 125, 125, 255} @[skip]
-	pv             int      @[required]
 	mouvements     int
-	capas          []Capa @[skip]
-	status_effects []int = []int{len: int(Effects.end_timed_effects)}
+	pv             int      @[required]
+	capas          []Capa   @[skip]
+	color          gx.Color = gx.Color{125, 125, 125, 255} @[skip]
+	status_effects []int    = []int{len: int(Effects.end_timed_effects)}    @[skip]
 }
 
 fn (mut unit Units) set_mouvements() {
