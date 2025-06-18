@@ -492,6 +492,14 @@ fn units_render(app App, transparency u8) {
 	}
 }
 
+// for referencing in app.world_map
+struct Troops {
+mut:
+	color   gx.Color = gx.Color{125, 125, 125, 255}
+	team_nb int
+	id      int
+}
+
 interface Units {
 	mouvements_max int
 	pv_max         int
@@ -524,13 +532,6 @@ fn (mut unit Units) damage(effects []int, app App) {
 	}
 }
 
-// for referencing in app.world_map
-struct Troops {
-mut:
-	color   gx.Color = gx.Color{125, 125, 125, 255}
-	team_nb int
-	id      int
-}
 
 struct Soldier {
 	mouvements_max int = 30
