@@ -1,9 +1,10 @@
 {
 "name": "Regen",
 "attacks": [{
+    "max_distance": 2,
     "range":      1,
 	"shape_type": 0,
-    "effects": [0, 0, 3, -1, 0, 2]
+    "effects": [0, 0, 3, -1, 0, 0]
 }
 ]
 }
