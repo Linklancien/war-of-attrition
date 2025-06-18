@@ -444,17 +444,21 @@ fn (mut app App) check_death() {
 // actions for the player
 fn cam_move(mut app Appli, move_x int, move_y int) {
 	if mut app is App {
-		app.dec_x += move_x
-		app.dec_y += move_y
+		if !app.changing_options{
+			app.dec_x += move_x
+			app.dec_y += move_y
+		}
 	}
 }
 
 fn capa_short_cut(mut app Appli, capa int) {
 	if mut app is App {
-		if app.id_capa_select == capa {
-			app.id_capa_select = -1
-		} else if capa < app.players_units_liste[app.player_id_turn][app.troop_select.id].capas.len {
-			app.id_capa_select = capa
+		if !app.changing_options{
+			if app.id_capa_select == capa {
+				app.id_capa_select = -1
+			} else if capa < app.players_units_liste[app.player_id_turn][app.troop_select.id].capas.len {
+				app.id_capa_select = capa
+			}
 		}
 	}
 }
