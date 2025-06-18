@@ -431,16 +431,19 @@ fn (mut app App) units_interactions(coo_x int, coo_y int) {
 		if app.id_capa_select == -1 {
 			unit_move(mut app, coo_x, coo_y)
 		} else {
-			key := app.players_units_liste[app.player_id_turn][app.troop_select.id].capas[app.id_capa_select]
-			app.map_capa_exist[key].use(mut app)
-			app.world_map[app.pos_select_x][app.pos_select_y] << [
-				Troops{
-					color:   app.troop_select.color
-					team_nb: app.troop_select.team_nb
-					id:      app.troop_select.id
-				},
-			]
-			app.check_death()
+			if !app.players_units_liste[app.player_id_turn][app.troop_select.id].capa_used {
+				app.players_units_liste[app.player_id_turn][app.troop_select.id].capa_used = true
+				key := app.players_units_liste[app.player_id_turn][app.troop_select.id].capas[app.id_capa_select]
+				app.map_capa_exist[key].use(mut app)
+				app.world_map[app.pos_select_x][app.pos_select_y] << [
+					Troops{
+						color:   app.troop_select.color
+						team_nb: app.troop_select.team_nb
+						id:      app.troop_select.id
+					},
+				]
+				app.check_death()
+			}
 		}
 
 		app.id_capa_select = -1
@@ -559,10 +562,13 @@ mut:
 	capas          []string
 	color          gx.Color = gx.Color{125, 125, 125, 255} @[skip]
 	status_effects []int    = []int{len: int(Effects.end_timed_effects)}    @[skip]
+
+	capa_used bool @[skip]
 }
 
 fn (mut unit Units) set_mouvements() {
 	unit.mouvements = unit.mouvements_max
+	unit.capa_used = false
 }
 
 fn (mut unit Units) status_change(app App) {
@@ -592,6 +598,9 @@ fn (unit Units) stats_render(ctx gg.Context, id int, app App, transparency u8) {
 	Mouvements: ${unit.mouvements}/${unit.mouvements_max}
 	Status: ${unit.status_effects}
 	Capas: ${app.id_capa_select}/${unit.capas.len}'
+	if unit.capa_used {
+		txt += ' \nCapa already used'
+	}
 	if app.id_capa_select > -1 {
 		key := unit.capas[app.id_capa_select]
 		name := app.map_capa_exist[key].name
@@ -625,8 +634,9 @@ fn (mut capa Capas) use(mut app App) {
 enum Possible_shape {
 	zone
 	line
+
+	// a ray is like a line but end up whenever it cross an ennemy
 	ray
-	// like a line but end up whenever it cross an ennemy
 }
 
 struct Attack {
@@ -677,8 +687,9 @@ fn (attack Attack) forme(app App) [][]int {
 
 	match Possible_shape.from(attack.shape_type) or { panic('') } {
 		.zone {
-			distance := hexagons.distance_hexa_x(app.pos_select_x, app.pos_select_y, coo_x, coo_y)
-			if attack.max_distance >= distance{
+			distance := hexagons.distance_hexa_x(app.pos_select_x, app.pos_select_y, coo_x,
+				coo_y)
+			if attack.max_distance >= distance {
 				concerned << hexagons.neighbors_hexa_x_in_range(coo_x, coo_y, len_x, len_y,
 					attack.range)
 				return concerned
