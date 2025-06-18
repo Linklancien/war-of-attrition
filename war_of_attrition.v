@@ -6,6 +6,7 @@ import os
 import gg { KeyCode }
 import gx
 import math.vec { Vec2 }
+import json
 
 const bg_color = gg.Color{0, 0, 0, 255}
 const font_path = os.resource_abs_path('FontMono.ttf')
@@ -21,8 +22,9 @@ mut:
 
 	playing bool
 
-	// for the main menu
-	// for placement turns
+	list_unit_exist []Units
+
+	// for placement turns:
 	placement_boundaries [][]int
 	// format: [x, max_x, y max_y]
 	in_placement_turns         bool
@@ -82,14 +84,15 @@ fn main() {
 	app.players_units_liste = [][]Units{len: app.player_liste.len, init: []Units{}}
 	app.players_units_to_place_ids = [][]int{len: app.player_liste.len, init: []int{}}
 
+	app.units_load()
+
 	for p in 0 .. app.player_liste.len {
 		for _ in 0 .. 10 {
 			app.players_units_to_place_ids[p] << [app.players_units_liste[p].len]
 			app.players_units_liste[p] << [
-				Soldier{
-					color: app.player_color[p]
-				},
+				app.list_unit_exist[0],
 			]
+			app.players_units_liste[p][app.players_units_liste[p].len - 1].color = app.player_color[p]
 		}
 	}
 	app.world_map = [][][]Hexa_tile{len: 24, init: [][]Hexa_tile{len: 12, init: []Hexa_tile{len: 1, init: Hexa_tile(Tile{})}}}
@@ -154,6 +157,24 @@ fn on_resized(e &gg.Event, mut app App) {
 }
 
 // APP INIT: //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+fn (mut app App) units_load() {
+	entries := os.ls(os.join_path('units')) or { [] }
+
+	// load units
+	for entry in entries {
+		path := os.join_path('units', entry)
+		if os.is_dir(path) {
+			println('dir: ${entry}')
+		} else {
+			temp_units := (os.read_file(path) or { panic('No temp_units to load') })
+			app.list_unit_exist << json.decode(Units, temp_units) or {
+				panic('Failed to decode json, error: ${err}')
+			}
+		}
+	}
+}
+
 fn (mut app App) buttons_initialistation() {
 	app.buttons_list << [
 		Button{
@@ -444,7 +465,7 @@ fn (mut app App) check_death() {
 // actions for the player
 fn cam_move(mut app Appli, move_x int, move_y int) {
 	if mut app is App {
-		if !app.changing_options{
+		if !app.changing_options {
 			app.dec_x += move_x
 			app.dec_y += move_y
 		}
@@ -453,7 +474,7 @@ fn cam_move(mut app Appli, move_x int, move_y int) {
 
 fn capa_short_cut(mut app Appli, capa int) {
 	if mut app is App {
-		if !app.changing_options{
+		if !app.changing_options {
 			if app.id_capa_select == capa {
 				app.id_capa_select = -1
 			} else if capa < app.players_units_liste[app.player_id_turn][app.troop_select.id].capas.len {
@@ -500,16 +521,16 @@ mut:
 	id      int
 }
 
-interface Units {
-	mouvements_max int
-	pv_max         int
-	render(gg.Context, f32, f32, f32, u8)
-	stats_render(gg.Context, int, App, u8)
+struct Units {
+	mouvements_max int    @[required]
+	pv_max         int    @[required]
+	name           string @[required]
 mut:
-	pv             int
+	color          gx.Color = gx.Color{125, 125, 125, 255} @[skip]
+	pv             int      @[required]
 	mouvements     int
-	capas          []Capa
-	status_effects []int
+	capas          []Capa @[skip]
+	status_effects []int = []int{len: int(Effects.end_timed_effects)}
 }
 
 fn (mut unit Units) set_mouvements() {
@@ -532,33 +553,19 @@ fn (mut unit Units) damage(effects []int, app App) {
 	}
 }
 
-
-struct Soldier {
-	mouvements_max int = 30
-	pv_max         int = 10
-mut:
-	pv         int = 10
-	mouvements int
-	color      gx.Color = gx.Color{125, 125, 125, 255}
-
-	capas          []Capa = [Zone{}, Line{}, Ray{}]
-	status_effects []int  = []int{len: int(Effects.end_timed_effects)}
-	// it len is the nb of timed Effects possibles
+fn (unit Units) render(ctx gg.Context, radius f32, pos_x f32, pos_y f32, transparency u8) {
+	ctx.draw_circle_filled(pos_x, pos_y, radius, attenuation(unit.color, transparency))
 }
 
-fn (sol Soldier) render(ctx gg.Context, radius f32, pos_x f32, pos_y f32, transparency u8) {
-	ctx.draw_circle_filled(pos_x, pos_y, radius, attenuation(sol.color, transparency))
-}
-
-fn (sol Soldier) stats_render(ctx gg.Context, id int, app App, transparency u8) {
+fn (unit Units) stats_render(ctx gg.Context, id int, app App, transparency u8) {
 	mut txt := 'UNIT Select:
-	Soldier ${id}
-	Pv: ${sol.pv}/${sol.pv_max}
-	Mouvements: ${sol.mouvements}/${sol.mouvements_max}
-	Status: ${sol.status_effects}
-	Capas: ${app.id_capa_select}/${sol.capas.len}'
+	${unit.name}: ${id}
+	Pv: ${unit.pv}/${unit.pv_max}
+	Mouvements: ${unit.mouvements}/${unit.mouvements_max}
+	Status: ${unit.status_effects}
+	Capas: ${app.id_capa_select}/${unit.capas.len}'
 	if app.id_capa_select > -1 {
-		txt += ' \n${sol.capas[app.id_capa_select].attacks[0].shape_type}'
+		txt += ' \n${unit.capas[app.id_capa_select].attacks[0].shape_type}'
 	}
 	playint.text_rect_render(app.ctx, app.text_cfg, app.ctx.width - 64, app.ctx.height / 2,
 		true, true, txt, transparency)
@@ -716,10 +723,10 @@ fn bleed_fn(mut unit Units, value int) int {
 }
 
 fn regeneration_fn(mut unit Units, value int) int {
-	if unit.pv < unit.pv_max{
+	if unit.pv < unit.pv_max {
 		unit.pv += 1
 	}
-	return value  - 1
+	return value - 1
 }
 
 // not timed
@@ -730,7 +737,7 @@ fn damage_fn(mut unit Units, value int) int {
 
 fn heal_fn(mut unit Units, value int) int {
 	unit.pv += value
-	if unit.pv > unit.pv_max{
+	if unit.pv > unit.pv_max {
 		unit.pv = unit.pv_max
 	}
 	return 0
