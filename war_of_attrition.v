@@ -23,7 +23,7 @@ mut:
 	playing bool
 
 	list_unit_exist []Units
-	list_capa_exist []Capas
+	map_capa_exist  map[string]Capas
 
 	// for placement turns:
 	placement_boundaries [][]int
@@ -86,7 +86,7 @@ fn main() {
 	app.players_units_liste = [][]Units{len: app.player_liste.len, init: []Units{}}
 	app.players_units_to_place_ids = [][]int{len: app.player_liste.len, init: []int{}}
 
-	// app.capas_load()
+	app.capas_load()
 	app.units_load()
 
 	for p in 0 .. app.player_liste.len {
@@ -170,9 +170,10 @@ fn (mut app App) capas_load() {
 			println('dir: ${entry}')
 		} else {
 			temp_capas := (os.read_file(path) or { panic('No temp_capas to load') })
-			app.list_capa_exist << json.decode(Capas, temp_capas) or {
+			capa := json.decode(Capas, temp_capas) or {
 				panic('Failed to decode json, path: ${path}, error: ${err}')
 			}
+			app.map_capa_exist[capa.name] = capa
 		}
 	}
 }
@@ -304,7 +305,8 @@ fn game_render(app App) {
 					coo_y, app.world_map.len + app.dec_x, app.world_map[0].len + app.dec_y)
 			}
 		} else {
-			path = app.players_units_liste[app.player_id_turn][app.troop_select.id].capas[app.id_capa_select].previsualisation(app)
+			key := app.players_units_liste[app.player_id_turn][app.troop_select.id].capas[app.id_capa_select]
+			path = app.map_capa_exist[key].previsualisation(app)
 		}
 	}
 	if app.in_placement_turns {
@@ -423,7 +425,8 @@ fn (mut app App) units_interactions(coo_x int, coo_y int) {
 		if app.id_capa_select == -1 {
 			unit_move(mut app, coo_x, coo_y)
 		} else {
-			app.players_units_liste[app.player_id_turn][app.troop_select.id].capas[app.id_capa_select].use(mut app)
+			key := app.players_units_liste[app.player_id_turn][app.troop_select.id].capas[app.id_capa_select]
+			app.map_capa_exist[key].use(mut app)
 			app.world_map[app.pos_select_x][app.pos_select_y] << [
 				Troops{
 					color:   app.troop_select.color
@@ -547,7 +550,7 @@ struct Units {
 mut:
 	mouvements     int
 	pv             int @[required]
-	capas          []Capas
+	capas          []string
 	color          gx.Color = gx.Color{125, 125, 125, 255} @[skip]
 	status_effects []int    = []int{len: int(Effects.end_timed_effects)}    @[skip]
 }
@@ -584,7 +587,9 @@ fn (unit Units) stats_render(ctx gg.Context, id int, app App, transparency u8) {
 	Status: ${unit.status_effects}
 	Capas: ${app.id_capa_select}/${unit.capas.len}'
 	if app.id_capa_select > -1 {
-		txt += ' \n${unit.capas[app.id_capa_select].attacks[0].shape_type}'
+		key := unit.capas[app.id_capa_select]
+		name := Possible_shape.from(app.map_capa_exist[key].attacks[0].shape_type) or {panic('No name found')}
+		txt += ' \n${name}'
 	}
 	playint.text_rect_render(app.ctx, app.text_cfg, app.ctx.width - 64, app.ctx.height / 2,
 		true, true, txt, transparency)
@@ -621,8 +626,8 @@ enum Possible_shape {
 struct Attack {
 mut:
 	// shape:
-	range      int            @[required]
-	shape_type int			@[required]
+	range      int @[required]
+	shape_type int @[required]
 
 	effects []int = []int{len: int(Effects.end_effects)} @[required]
 	// it len is the nb of Effects possibles
@@ -663,7 +668,7 @@ fn (attack Attack) forme(app App) [][]int {
 
 	mut concerned := [[coo_x, coo_y]]
 
-	match Possible_shape.from(attack.shape_type) or{panic('')} {
+	match Possible_shape.from(attack.shape_type) or { panic('') } {
 		.zone {
 			concerned << hexagons.neighbors_hexa_x_in_range(coo_x, coo_y, len_x, len_y,
 				attack.range)
@@ -716,6 +721,9 @@ fn bleed_fn(mut unit Units, value int) int {
 }
 
 fn regeneration_fn(mut unit Units, value int) int {
+	if value <= 0 {
+		return 0
+	}
 	if unit.pv < unit.pv_max {
 		unit.pv += 1
 	}
