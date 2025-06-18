@@ -7,7 +7,7 @@
 "name": "Zone",
 "attacks": [{
     "range":      1,
-	"shape_type": {"Possible_shape": ["zone"]},
+	"shape_type": 1,
     "effects":[0, 0, 0, 0, 10, 0]
 }
 ]

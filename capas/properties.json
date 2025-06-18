@@ -1,7 +1,0 @@
-{
-  "properties": {
-    "Possible_shape": {
-      "enum": ["zone", "line", "ray"]
-    }
-  }
-}

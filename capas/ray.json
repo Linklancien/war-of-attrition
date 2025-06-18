@@ -2,7 +2,7 @@
 "name": "Ray",
 "attacks": [{
     "range":      5,
-	"shape_type": {"Possible_shape": ["ray"]},
+	"shape_type": 2,
     "effects": [5, 5, 0, 0, 5, 0]
 }
 ]

@@ -86,7 +86,7 @@ fn main() {
 	app.players_units_liste = [][]Units{len: app.player_liste.len, init: []Units{}}
 	app.players_units_to_place_ids = [][]int{len: app.player_liste.len, init: []int{}}
 
-	app.capas_load()
+	// app.capas_load()
 	app.units_load()
 
 	for p in 0 .. app.player_liste.len {
@@ -165,15 +165,13 @@ fn (mut app App) capas_load() {
 
 	// load capas
 	for entry in entries {
-		if entry != 'properties.json' {
-			path := os.join_path('capas', entry)
-			if os.is_dir(path) {
-				println('dir: ${entry}')
-			} else {
-				temp_capas := (os.read_file(path) or { panic('No temp_capas to load') })
-				app.list_capa_exist << json.decode(Capas, temp_capas) or {
-					panic('Failed to decode json, path: ${path}, error: ${err}')
-				}
+		path := os.join_path('capas', entry)
+		if os.is_dir(path) {
+			println('dir: ${entry}')
+		} else {
+			temp_capas := (os.read_file(path) or { panic('No temp_capas to load') })
+			app.list_capa_exist << json.decode(Capas, temp_capas) or {
+				panic('Failed to decode json, path: ${path}, error: ${err}')
 			}
 		}
 	}
@@ -548,8 +546,8 @@ struct Units {
 	name           string @[required]
 mut:
 	mouvements     int
-	pv             int      @[required]
-	capas          []Capas  
+	pv             int @[required]
+	capas          []Capas
 	color          gx.Color = gx.Color{125, 125, 125, 255} @[skip]
 	status_effects []int    = []int{len: int(Effects.end_timed_effects)}    @[skip]
 }
@@ -624,7 +622,7 @@ struct Attack {
 mut:
 	// shape:
 	range      int            @[required]
-	shape_type Possible_shape @[required]
+	shape_type int			@[required]
 
 	effects []int = []int{len: int(Effects.end_effects)} @[required]
 	// it len is the nb of Effects possibles
@@ -665,7 +663,7 @@ fn (attack Attack) forme(app App) [][]int {
 
 	mut concerned := [[coo_x, coo_y]]
 
-	match attack.shape_type {
+	match Possible_shape.from(attack.shape_type) or{panic('')} {
 		.zone {
 			concerned << hexagons.neighbors_hexa_x_in_range(coo_x, coo_y, len_x, len_y,
 				attack.range)

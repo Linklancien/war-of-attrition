@@ -2,7 +2,7 @@
 "name": "Line",
 "attacks": [{
     "range":      5,
-	"shape_type": {"Possible_shape": ["line"]},
+	"shape_type": 1,
     "effects": [10, 10, 0, 0, 0, 0]
 }
 ]
