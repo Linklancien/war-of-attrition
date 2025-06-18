@@ -90,7 +90,7 @@ fn main() {
 	app.units_load()
 
 	for p in 0 .. app.player_liste.len {
-		list_unit := ['Healer', 'Healer', 'Soldier', 'Soldier']
+		list_unit := ['Healer', 'Healer', 'Grenade Soldier', 'Toxic Soldier']
 		for next in list_unit {
 			app.players_units_to_place_ids[p] << [app.players_units_liste[p].len]
 			app.players_units_liste[p] << [

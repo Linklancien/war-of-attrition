@@ -1,0 +1,9 @@
+{
+"name": "Toxic Line",
+"attacks": [{
+    "range":      5,
+	"shape_type": 1,
+    "effects": [5, 0, 0, -1, 0, 0]
+}
+]
+}
