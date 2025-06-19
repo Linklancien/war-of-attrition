@@ -213,7 +213,6 @@ fn (mut app App) images_load() {
 			image := app.ctx.create_image(data) or {
 				app.ctx.create_image('images/error.png') or { panic('No image') }
 			}
-
 			app.map_image[entry#[..-4]] = image
 		}
 	}
