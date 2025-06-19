@@ -209,8 +209,7 @@ fn (mut app App) images_load() {
 		if os.is_dir(path) {
 			println('dir: ${entry}')
 		} else {
-			data := (os.read_file(path) or { panic('No image to load') })
-			image := app.ctx.create_image(data) or {
+			image := app.ctx.create_image(path) or {
 				app.ctx.create_image('images/error.png') or { panic('No image') }
 			}
 			app.map_image[entry#[..-4]] = image
@@ -608,8 +607,6 @@ fn (mut unit Units) damage(effects []int, app App) {
 }
 
 fn (unit Units) render(ctx gg.Context, radius f32, pos_x f32, pos_y f32, transparency u8, app App) {
-	println(unit.name)
-	println(app.map_image.keys())
 	if image := app.map_image[unit.name] {
 		ctx.draw_image(pos_x - radius / 2, pos_y - radius / 2, radius, radius, image)
 	} else {
