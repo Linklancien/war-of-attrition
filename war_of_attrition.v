@@ -1,6 +1,6 @@
 module main
 
-import linklancien.playint { Appli, Button, attenuation }
+import linklancien.playint { Appli, Button }
 import hexagons { Hexa_tile }
 import os
 import gg { KeyCode }
@@ -24,6 +24,7 @@ mut:
 
 	map_unit_exist map[string]Units
 	map_capa_exist map[string]Capas
+	map_image      map[string]gg.Image
 
 	// for placement turns:
 	placement_boundaries [][]int
@@ -88,6 +89,7 @@ fn main() {
 
 	app.capas_load()
 	app.units_load()
+	app.images_load()
 
 	for p in 0 .. app.player_liste.len {
 		list_unit := ['Healer', 'Healer', 'Grenade Soldier', 'Toxic Soldier']
@@ -194,6 +196,25 @@ fn (mut app App) units_load() {
 			}
 
 			app.map_unit_exist[unit.name] = unit
+		}
+	}
+}
+
+fn (mut app App) images_load() {
+	entries := os.ls(os.join_path('images')) or { [] }
+
+	// load units
+	for entry in entries {
+		path := os.join_path('images', entry)
+		if os.is_dir(path) {
+			println('dir: ${entry}')
+		} else {
+			data := (os.read_file(path) or { panic('No image to load') })
+			image := app.ctx.create_image(data) or {
+				app.ctx.create_image('images/error.png') or { panic('No image') }
+			}
+
+			app.map_image[entry#[..-4]] = image
 		}
 	}
 }
@@ -525,8 +546,8 @@ fn units_render(app App, transparency u8) {
 					Troops {
 						team := troop.team_nb
 						unit_id := troop.id
-						app.players_units_liste[team][unit_id].render(app.ctx, app.radius - 5,
-							pos_x * app.radius, pos_y * app.radius, transparency)
+						app.players_units_liste[team][unit_id].render(app.ctx, app.radius,
+							pos_x * app.radius, pos_y * app.radius, transparency, app)
 					}
 					else {}
 				}
@@ -538,8 +559,8 @@ fn units_render(app App, transparency u8) {
 			app.pos_select_y + app.dec_y)
 		team := app.troop_select.team_nb
 		unit_id := app.troop_select.id
-		app.players_units_liste[team][unit_id].render(app.ctx, app.radius - 5, pos_x * app.radius,
-			pos_y * app.radius, transparency - 100)
+		app.players_units_liste[team][unit_id].render(app.ctx, app.radius, pos_x * app.radius,
+			pos_y * app.radius, transparency - 100, app)
 		app.players_units_liste[team][unit_id].stats_render(app.ctx, unit_id, app, transparency)
 	}
 }
@@ -587,8 +608,14 @@ fn (mut unit Units) damage(effects []int, app App) {
 	}
 }
 
-fn (unit Units) render(ctx gg.Context, radius f32, pos_x f32, pos_y f32, transparency u8) {
-	ctx.draw_circle_filled(pos_x, pos_y, radius, attenuation(unit.color, transparency))
+fn (unit Units) render(ctx gg.Context, radius f32, pos_x f32, pos_y f32, transparency u8, app App) {
+	if image := app.map_image[unit.name] {
+		ctx.draw_image(pos_x - radius / 2, pos_y - radius / 2, radius, radius, image)
+	} else {
+		ctx.draw_image(pos_x - radius / 2, pos_y - radius / 2, radius, radius, app.map_image['error'] or {
+			panic('No image')
+		})
+	}
 }
 
 fn (unit Units) stats_render(ctx gg.Context, id int, app App, transparency u8) {
