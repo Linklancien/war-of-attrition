@@ -716,6 +716,7 @@ enum Effects {
 	poison
 	bleed
 	regeneration
+	stun
 
 	end_timed_effects
 
@@ -752,6 +753,15 @@ fn regeneration_fn(mut unit Units, value int) int {
 	return value - 1
 }
 
+fn stun_fn(mut unit Units, value int) int {
+	if value <= 0 {
+		return 0
+	}
+	unit.capa_used = true
+	unit.mouvements = 0
+	return value - 1
+}
+
 // not timed
 fn damage_fn(mut unit Units, value int) int {
 	unit.pv -= value
@@ -773,6 +783,7 @@ fn (mut app App) effects_initialistation() {
 	app.effects_functions[int(Effects.poison)] = poison_fn
 	app.effects_functions[int(Effects.bleed)] = bleed_fn
 	app.effects_functions[int(Effects.regeneration)] = regeneration_fn
+	app.effects_functions[int(Effects.stun)] = stun_fn
 
 	// not timed
 	app.effects_functions[int(Effects.heal)] = heal_fn

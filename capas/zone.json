@@ -4,7 +4,7 @@
     "max_distance": 5,
     "range":      1,
 	"shape_type": 0,
-    "effects": [0, 0, 0, -1, 5, 0]
+    "effects": [0, 0, 0, 0, -1, 5, 0]
 }
 ]
 }
