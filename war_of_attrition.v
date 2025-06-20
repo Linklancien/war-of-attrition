@@ -930,7 +930,7 @@ fn end_turn_is_actionnable(mut app Appli) bool {
 	return false
 }
 
-fn next_state(mut app Appli){
+fn  (mut app Appli){
 	if start_is_actionnable(mut app){
 		game_start(mut app)
 	}
