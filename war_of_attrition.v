@@ -1,6 +1,6 @@
 module main
 
-import linklancien.playint { Appli, Button }
+import linklancien.playint { Appli, Button, attenuation }
 import hexagons { Hexa_tile }
 import os
 import gg { KeyCode }
@@ -607,6 +607,7 @@ fn (mut unit Units) damage(effects []int, app App) {
 }
 
 fn (unit Units) render(ctx gg.Context, radius f32, pos_x f32, pos_y f32, transparency u8, app App) {
+	ctx.draw_circle_filled(pos_x, pos_y, radius - 10, attenuation(unit.color, transparency))
 	if image := app.map_image[unit.name] {
 		ctx.draw_image(pos_x - radius / 2, pos_y - radius / 2, radius, radius, image)
 	} else {
