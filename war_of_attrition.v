@@ -356,7 +356,8 @@ fn game_render(app App) {
 	playint.text_rect_render(app.ctx, app.text_cfg, 32, 32, true, true, txt, transparency)
 
 	// units
-	units_render(app, transparency)
+	app.units_render(transparency)
+	app.pv_render(transparency)
 
 	// placements turns
 	if app.in_placement_turns {
@@ -383,6 +384,20 @@ fn game_render(app App) {
 				transparency)
 		}
 	}
+}
+
+fn (app App) pv_render(transparency u8){
+	mut txt_pv := ''
+	for id, unit in app.players_units_liste[app.player_id_turn]{
+		if id == 0{
+			txt_pv += '${id}: ${unit.pv}/${unit.pv_max}'
+		}
+		else{
+			txt_pv += '\n${id}: ${unit.pv}/${unit.pv_max}'
+		}
+	}
+	playint.text_rect_render(app.ctx, app.text_cfg, 48, app.ctx.height / 2, true,
+			true, txt_pv, transparency)
 }
 
 fn (mut app App) check_placement() {
@@ -535,7 +550,8 @@ fn capa_short_cut(mut app Appli, capa int) {
 }
 
 // UNITS /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-fn units_render(app App, transparency u8) {
+fn (app App) units_render(transparency u8) {
+	// units
 	for coo_x in 0 .. app.world_map.len {
 		for coo_y in 0 .. app.world_map[coo_x].len {
 			pos_x, pos_y := hexagons.coo_hexa_x_to_ortho(coo_x + app.dec_x, coo_y + app.dec_y)
@@ -552,6 +568,8 @@ fn units_render(app App, transparency u8) {
 			}
 		}
 	}
+
+	// selected unit
 	if app.in_selection {
 		pos_x, pos_y := hexagons.coo_hexa_x_to_ortho(app.pos_select_x + app.dec_x,
 			app.pos_select_y + app.dec_y)
@@ -633,7 +651,7 @@ fn (unit Units) stats_render(ctx gg.Context, id int, app App, transparency u8) {
 		txt += ' \n${name}'
 	}
 	playint.text_rect_render(app.ctx, app.text_cfg, app.ctx.width - 64, app.ctx.height / 2,
-		true, true, txt, transparency)
+		true, true, txt, transparency - 40)
 }
 
 // Attack
