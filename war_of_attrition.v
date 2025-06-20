@@ -386,18 +386,17 @@ fn game_render(app App) {
 	}
 }
 
-fn (app App) pv_render(transparency u8){
+fn (app App) pv_render(transparency u8) {
 	mut txt_pv := ''
-	for id, unit in app.players_units_liste[app.player_id_turn]{
-		if id == 0{
+	for id, unit in app.players_units_liste[app.player_id_turn] {
+		if id == 0 {
 			txt_pv += '${id}: ${unit.pv}/${unit.pv_max}'
-		}
-		else{
+		} else {
 			txt_pv += '\n${id}: ${unit.pv}/${unit.pv_max}'
 		}
 	}
-	playint.text_rect_render(app.ctx, app.text_cfg, 48, app.ctx.height / 2, true,
-			true, txt_pv, transparency - 40)
+	playint.text_rect_render(app.ctx, app.text_cfg, 48, app.ctx.height / 2, true, true,
+		txt_pv, transparency - 40)
 }
 
 fn (mut app App) check_placement() {
@@ -930,14 +929,12 @@ fn end_turn_is_actionnable(mut app Appli) bool {
 	return false
 }
 
-fn  (mut app Appli){
-	if start_is_actionnable(mut app){
+fn next_state(mut app Appli) {
+	if start_is_actionnable(mut app) {
 		game_start(mut app)
-	}
-	else if start_turn_is_actionnable(mut app){
+	} else if start_turn_is_actionnable(mut app) {
 		start_turn(mut app)
-	}
-	else if end_turn_is_actionnable(mut app){
+	} else if end_turn_is_actionnable(mut app) {
 		end_turn(mut app)
 	}
 }
