@@ -1,0 +1,7 @@
+{
+"mouvements_max": 5,
+"pv_max": 15,
+"pv": 15,
+"name": "Tank",
+"capas": []
+}

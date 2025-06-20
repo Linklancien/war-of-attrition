@@ -92,7 +92,7 @@ fn main() {
 	app.images_load()
 
 	for p in 0 .. app.player_liste.len {
-		list_unit := ['Healer', 'Healer', 'Grenade Soldier', 'Toxic Soldier']
+		list_unit := ['Healer', 'Tank', 'Grenade Soldier', 'Toxic Soldier']
 		for next in list_unit {
 			app.players_units_to_place_ids[p] << [app.players_units_liste[p].len]
 			app.players_units_liste[p] << [
@@ -254,7 +254,7 @@ fn (mut app App) buttons_initialistation() {
 
 fn (mut app App) actions_initialistation() {
 	// app.new_action(function, 'function_name', -1 or int(KeyCode. ))
-	app.new_action(game_start, 'game start', int(KeyCode.enter))
+	app.new_action(next_state, 'game start', int(KeyCode.enter))
 
 	name := ['camera up', 'camera down', 'camera right', 'camera left']
 	mvt := [[0, 2], [0, -2], [-2, 0], [2, 0]]
@@ -397,7 +397,7 @@ fn (app App) pv_render(transparency u8){
 		}
 	}
 	playint.text_rect_render(app.ctx, app.text_cfg, 48, app.ctx.height / 2, true,
-			true, txt_pv, transparency)
+			true, txt_pv, transparency - 40)
 }
 
 fn (mut app App) check_placement() {
@@ -838,12 +838,10 @@ fn (mut app App) effects_initialistation() {
 // start
 fn game_start(mut app Appli) {
 	if mut app is App {
-		if !app.playing {
-			app.playing = true
-			app.in_waiting_screen = true
-			app.in_placement_turns = true
-			app.player_id_turn = app.player_liste.len - 1
-		}
+		app.playing = true
+		app.in_waiting_screen = true
+		app.in_placement_turns = true
+		app.player_id_turn = app.player_liste.len - 1
 	}
 	if mut app is playint.Opt {
 	}
@@ -930,4 +928,16 @@ fn end_turn_is_actionnable(mut app Appli) bool {
 		return app.playing && !app.in_waiting_screen && !app.changing_options
 	}
 	return false
+}
+
+fn next_state(mut app Appli){
+	if start_is_actionnable(mut app){
+		game_start(mut app)
+	}
+	else if start_turn_is_actionnable(mut app){
+		start_turn(mut app)
+	}
+	else if end_turn_is_actionnable(mut app){
+		end_turn(mut app)
+	}
 }
