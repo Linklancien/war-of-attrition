@@ -24,6 +24,7 @@ mut:
 
 	map_unit_exist map[string]Units
 	map_capa_exist map[string]Capas
+	map_image      map[string]gg.Image
 
 	// for placement turns:
 	placement_boundaries [][]int
@@ -88,9 +89,10 @@ fn main() {
 
 	app.capas_load()
 	app.units_load()
+	app.images_load()
 
 	for p in 0 .. app.player_liste.len {
-		list_unit := ['Healer', 'Healer', 'Grenade Soldier', 'Toxic Soldier']
+		list_unit := ['Healer', 'Tank', 'Grenade Soldier', 'Toxic Soldier']
 		for next in list_unit {
 			app.players_units_to_place_ids[p] << [app.players_units_liste[p].len]
 			app.players_units_liste[p] << [
@@ -198,6 +200,23 @@ fn (mut app App) units_load() {
 	}
 }
 
+fn (mut app App) images_load() {
+	entries := os.ls(os.join_path('images')) or { [] }
+
+	// load units
+	for entry in entries {
+		path := os.join_path('images', entry)
+		if os.is_dir(path) {
+			println('dir: ${entry}')
+		} else {
+			image := app.ctx.create_image(path) or {
+				app.ctx.create_image('images/error.png') or { panic('No image') }
+			}
+			app.map_image[entry#[..-4]] = image
+		}
+	}
+}
+
 fn (mut app App) buttons_initialistation() {
 	app.buttons_list << [
 		Button{
@@ -235,7 +254,7 @@ fn (mut app App) buttons_initialistation() {
 
 fn (mut app App) actions_initialistation() {
 	// app.new_action(function, 'function_name', -1 or int(KeyCode. ))
-	app.new_action(game_start, 'game start', int(KeyCode.enter))
+	app.new_action(next_state, 'game start', int(KeyCode.enter))
 
 	name := ['camera up', 'camera down', 'camera right', 'camera left']
 	mvt := [[0, 2], [0, -2], [-2, 0], [2, 0]]
@@ -337,7 +356,8 @@ fn game_render(app App) {
 	playint.text_rect_render(app.ctx, app.text_cfg, 32, 32, true, true, txt, transparency)
 
 	// units
-	units_render(app, transparency)
+	app.units_render(transparency)
+	app.pv_render(transparency)
 
 	// placements turns
 	if app.in_placement_turns {
@@ -364,6 +384,19 @@ fn game_render(app App) {
 				transparency)
 		}
 	}
+}
+
+fn (app App) pv_render(transparency u8) {
+	mut txt_pv := ''
+	for id, unit in app.players_units_liste[app.player_id_turn] {
+		if id == 0 {
+			txt_pv += '${id}: ${unit.pv}/${unit.pv_max}'
+		} else {
+			txt_pv += '\n${id}: ${unit.pv}/${unit.pv_max}'
+		}
+	}
+	playint.text_rect_render(app.ctx, app.text_cfg, 48, app.ctx.height / 2, true, true,
+		txt_pv, transparency - 40)
 }
 
 fn (mut app App) check_placement() {
@@ -516,7 +549,8 @@ fn capa_short_cut(mut app Appli, capa int) {
 }
 
 // UNITS /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-fn units_render(app App, transparency u8) {
+fn (app App) units_render(transparency u8) {
+	// units
 	for coo_x in 0 .. app.world_map.len {
 		for coo_y in 0 .. app.world_map[coo_x].len {
 			pos_x, pos_y := hexagons.coo_hexa_x_to_ortho(coo_x + app.dec_x, coo_y + app.dec_y)
@@ -525,21 +559,23 @@ fn units_render(app App, transparency u8) {
 					Troops {
 						team := troop.team_nb
 						unit_id := troop.id
-						app.players_units_liste[team][unit_id].render(app.ctx, app.radius - 5,
-							pos_x * app.radius, pos_y * app.radius, transparency)
+						app.players_units_liste[team][unit_id].render(app.ctx, app.radius,
+							pos_x * app.radius, pos_y * app.radius, transparency, app)
 					}
 					else {}
 				}
 			}
 		}
 	}
+
+	// selected unit
 	if app.in_selection {
 		pos_x, pos_y := hexagons.coo_hexa_x_to_ortho(app.pos_select_x + app.dec_x,
 			app.pos_select_y + app.dec_y)
 		team := app.troop_select.team_nb
 		unit_id := app.troop_select.id
-		app.players_units_liste[team][unit_id].render(app.ctx, app.radius - 5, pos_x * app.radius,
-			pos_y * app.radius, transparency - 100)
+		app.players_units_liste[team][unit_id].render(app.ctx, app.radius, pos_x * app.radius,
+			pos_y * app.radius, transparency - 100, app)
 		app.players_units_liste[team][unit_id].stats_render(app.ctx, unit_id, app, transparency)
 	}
 }
@@ -587,8 +623,15 @@ fn (mut unit Units) damage(effects []int, app App) {
 	}
 }
 
-fn (unit Units) render(ctx gg.Context, radius f32, pos_x f32, pos_y f32, transparency u8) {
-	ctx.draw_circle_filled(pos_x, pos_y, radius, attenuation(unit.color, transparency))
+fn (unit Units) render(ctx gg.Context, radius f32, pos_x f32, pos_y f32, transparency u8, app App) {
+	ctx.draw_circle_filled(pos_x, pos_y, radius - 10, attenuation(unit.color, transparency))
+	if image := app.map_image[unit.name] {
+		ctx.draw_image(pos_x - radius / 2, pos_y - radius / 2, radius, radius, image)
+	} else {
+		ctx.draw_image(pos_x - radius / 2, pos_y - radius / 2, radius, radius, app.map_image['error'] or {
+			panic('No image')
+		})
+	}
 }
 
 fn (unit Units) stats_render(ctx gg.Context, id int, app App, transparency u8) {
@@ -607,7 +650,7 @@ fn (unit Units) stats_render(ctx gg.Context, id int, app App, transparency u8) {
 		txt += ' \n${name}'
 	}
 	playint.text_rect_render(app.ctx, app.text_cfg, app.ctx.width - 64, app.ctx.height / 2,
-		true, true, txt, transparency)
+		true, true, txt, transparency - 40)
 }
 
 // Attack
@@ -794,12 +837,10 @@ fn (mut app App) effects_initialistation() {
 // start
 fn game_start(mut app Appli) {
 	if mut app is App {
-		if !app.playing {
-			app.playing = true
-			app.in_waiting_screen = true
-			app.in_placement_turns = true
-			app.player_id_turn = app.player_liste.len - 1
-		}
+		app.playing = true
+		app.in_waiting_screen = true
+		app.in_placement_turns = true
+		app.player_id_turn = app.player_liste.len - 1
 	}
 	if mut app is playint.Opt {
 	}
@@ -886,4 +927,14 @@ fn end_turn_is_actionnable(mut app Appli) bool {
 		return app.playing && !app.in_waiting_screen && !app.changing_options
 	}
 	return false
+}
+
+fn next_state(mut app Appli) {
+	if start_is_actionnable(mut app) {
+		game_start(mut app)
+	} else if start_turn_is_actionnable(mut app) {
+		start_turn(mut app)
+	} else if end_turn_is_actionnable(mut app) {
+		end_turn(mut app)
+	}
 }
