@@ -3,5 +3,5 @@
 "pv_max": 15,
 "pv": 15,
 "name": "Tank",
-"capas": []
+"capas": ["Cut"]
 }
