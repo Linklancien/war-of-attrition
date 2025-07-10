@@ -313,15 +313,18 @@ fn game_render(app App) {
 	if app.changing_options {
 		transparency = 150
 	}
+
+	mut coo_x, mut coo_y := hexagons.coo_ortho_to_hexa_x(app.ctx.mouse_pos_x / app.radius,
+		app.ctx.mouse_pos_y / app.radius, app.world_map.len + app.dec_x,
+		app.world_map[0].len + app.dec_y)
+
+	coo_x -= app.dec_x
+	coo_y -= app.dec_y
+
 	mut path := [][]int{}
 	if app.in_selection {
 		if app.id_capa_select == -1 {
-			mut coo_x, mut coo_y := hexagons.coo_ortho_to_hexa_x(app.ctx.mouse_pos_x / app.radius,
-				app.ctx.mouse_pos_y / app.radius, app.world_map.len + app.dec_x,
-				app.world_map[0].len + app.dec_y)
 
-			coo_x -= app.dec_x
-			coo_y -= app.dec_y
 			distance := hexagons.distance_hexa_x(app.pos_select_x, app.pos_select_y, coo_x,
 				coo_y)
 			mvt := app.players_units_liste[app.player_id_turn][app.troop_select.id].mouvements
@@ -334,17 +337,8 @@ fn game_render(app App) {
 			path = app.map_capa_exist[key].previsualisation(app)
 		}
 	}
-	if app.in_placement_turns {
-		mut coo_x, mut coo_y := hexagons.coo_ortho_to_hexa_x(app.ctx.mouse_pos_x / app.radius,
-			app.ctx.mouse_pos_y / app.radius, app.world_map.len + app.dec_x, app.world_map[0].len +
-			app.dec_y)
-
-		coo_x -= app.dec_x
-		coo_y -= app.dec_y
-
-		if app.check_placement_possible(coo_x, coo_y) {
-			path << [coo_x, coo_y]
-		}
+	else if app.in_placement_turns && app.check_placement_possible(coo_x, coo_y) {
+		path << [coo_x, coo_y]
 	}
 
 	// map
@@ -361,28 +355,33 @@ fn game_render(app App) {
 
 	// placements turns
 	if app.in_placement_turns {
-		txt_plac := 'PLACEMENT TURNS
-		boundaries: ${app.placement_boundaries[app.player_id_turn]}'
+		app.placement_render(path.len == 0)
+	}
+}
 
-		playint.text_rect_render(app.ctx, app.text_cfg, app.ctx.width / 2, 32, true, true,
-			txt_plac, transparency)
+// PLACEMENT
+fn (app App) placement_render(is_out_of_bounds bool){
+	txt_plac := 'PLACEMENT TURNS
+	boundaries: ${app.placement_boundaries[app.player_id_turn]}'
 
-		if path.len == 0 {
-			playint.text_rect_render(app.ctx, app.text_cfg, app.ctx.width / 2, app.ctx.height / 2,
-				true, true, 'OUT OF BOUNDS', transparency)
-		}
+	playint.text_rect_render(app.ctx, app.text_cfg, app.ctx.width / 2, 32, true, true,
+		txt_plac, transparency)
+		
+	if is_out_of_bounds {
+		playint.text_rect_render(app.ctx, app.text_cfg, app.ctx.width / 2, app.ctx.height / 2,
+			true, true, 'OUT OF BOUNDS', transparency)
+	}
 
-		team := app.player_id_turn
-		len := app.players_units_to_place_ids[team].len
-		txt_nb := 'UNITS TO PLACE: ${len}'
-		playint.text_rect_render(app.ctx, app.text_cfg, app.ctx.width - 128, 32, true,
-			true, txt_nb, transparency)
+	team := app.player_id_turn
+	len := app.players_units_to_place_ids[team].len
+	txt_nb := 'UNITS TO PLACE: ${len}'
+	playint.text_rect_render(app.ctx, app.text_cfg, app.ctx.width - 128, 32, true,
+		true, txt_nb, transparency)
 
-		if len > 0 {
-			unit_id := app.players_units_to_place_ids[team][len - 1]
-			app.players_units_liste[team][unit_id].stats_render(app.ctx, unit_id, app,
-				transparency)
-		}
+	if len > 0 {
+		unit_id := app.players_units_to_place_ids[team][len - 1]
+		app.players_units_liste[team][unit_id].stats_render(app.ctx, unit_id, app,
+			transparency)
 	}
 }
 
