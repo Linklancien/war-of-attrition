@@ -2,11 +2,11 @@ module main
 
 import linklancien.playint { Appli, Button, attenuation }
 import hexagons { Hexa_tile }
-import os
-import gg { KeyCode }
-import gx
 import math.vec { Vec2 }
+import gg { KeyCode }
 import json
+import os
+import gx
 
 const bg_color = gg.Color{0, 0, 0, 255}
 const font_path = os.resource_abs_path('FontMono.ttf')
@@ -661,12 +661,12 @@ fn (unit Units) placed_stats_render(ctx gg.Context, id int, app App, x f32, y f3
 	]
 
 	if unit.capa_used {
-		lignes << [' \nCapa already used']
+		lignes << [' Capa already used']
 	}
 	if app.id_capa_select > -1 {
 		key := unit.capas[app.id_capa_select]
 		name := app.map_capa_exist[key].name
-		lignes << [' \n${name}']
+		lignes << [' ${name}']
 	}
 
 	mut max_len := 0
@@ -676,7 +676,7 @@ fn (unit Units) placed_stats_render(ctx gg.Context, id int, app App, x f32, y f3
 			txt += '\n'
 		}
 		txt += ligne
-		// here 4 is a magic number due to the playint module
+		// here 4 is a magic number due to the playint module (8 / 2)
 		if max_len < ligne.len * 4{
 			max_len = ligne.len * 4
 		}
