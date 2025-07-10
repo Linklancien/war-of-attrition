@@ -549,6 +549,28 @@ fn capa_short_cut(mut app Appli, capa int) {
 }
 
 // UNITS /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// for referencing in app.world_map
+struct Troops {
+mut:
+	color   gx.Color = gx.Color{125, 125, 125, 255}
+	team_nb int
+	id      int
+}
+
+struct Units {
+	mouvements_max int    @[required]
+	pv_max         int    @[required]
+	name           string @[required]
+mut:
+	mouvements     int
+	pv             int @[required]
+	capas          []string
+	color          gx.Color = gx.Color{125, 125, 125, 255} @[skip]
+	status_effects []int    = []int{len: int(Effects.end_timed_effects)}    @[skip]
+
+	capa_used bool @[skip]
+}
+
 fn (app App) units_render(transparency u8) {
 	// units
 	for coo_x in 0 .. app.world_map.len {
@@ -578,28 +600,6 @@ fn (app App) units_render(transparency u8) {
 			pos_y * app.radius, transparency - 100, app)
 		app.players_units_liste[team][unit_id].stats_render(app.ctx, unit_id, app, transparency)
 	}
-}
-
-// for referencing in app.world_map
-struct Troops {
-mut:
-	color   gx.Color = gx.Color{125, 125, 125, 255}
-	team_nb int
-	id      int
-}
-
-struct Units {
-	mouvements_max int    @[required]
-	pv_max         int    @[required]
-	name           string @[required]
-mut:
-	mouvements     int
-	pv             int @[required]
-	capas          []string
-	color          gx.Color = gx.Color{125, 125, 125, 255} @[skip]
-	status_effects []int    = []int{len: int(Effects.end_timed_effects)}    @[skip]
-
-	capa_used bool @[skip]
 }
 
 fn (mut unit Units) set_mouvements() {
