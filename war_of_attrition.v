@@ -389,13 +389,15 @@ fn game_render(app App) {
 fn (app App) pv_render(transparency u8) {
 	mut txt_pv := ''
 	for id, unit in app.players_units_liste[app.player_id_turn] {
+		to_render := '${unit.name}: ${unit.pv}/${unit.pv_max}'
 		if id == 0 {
-			txt_pv += '${id}: ${unit.pv}/${unit.pv_max}'
+			txt_pv += to_render
 		} else {
-			txt_pv += '\n${id}: ${unit.pv}/${unit.pv_max}'
+			txt_pv += '\n'
+			txt_pv += to_render
 		}
 	}
-	playint.text_rect_render(app.ctx, app.text_cfg, 48, app.ctx.height / 2, true, true,
+	playint.text_rect_render(app.ctx, app.text_cfg, 0, app.ctx.height / 2, false, true,
 		txt_pv, transparency - 40)
 }
 
@@ -635,21 +637,42 @@ fn (unit Units) render(ctx gg.Context, radius f32, pos_x f32, pos_y f32, transpa
 }
 
 fn (unit Units) stats_render(ctx gg.Context, id int, app App, transparency u8) {
-	mut txt := 'UNIT Select:
-	${unit.name}: ${id}
-	Pv: ${unit.pv}/${unit.pv_max}
-	Mouvements: ${unit.mouvements}/${unit.mouvements_max}
-	Status: ${unit.status_effects}
-	Capas: ${app.id_capa_select}/${unit.capas.len}'
+	unit.placed_stats_render(ctx, id, app, app.ctx.width, app.ctx.height / 2, transparency)
+}
+
+fn (unit Units) placed_stats_render(ctx gg.Context, id int, app App, x f32, y f32, transparency u8) {
+	mut lignes := [
+	'UNIT Select:',
+	'${unit.name}: ${id}',
+	'Pv: ${unit.pv}/${unit.pv_max}',
+	'Mouvements: ${unit.mouvements}/${unit.mouvements_max}',
+	'Status: ${unit.status_effects}',
+	'Capas: ${app.id_capa_select}/${unit.capas.len}'
+	]
+
 	if unit.capa_used {
-		txt += ' \nCapa already used'
+		lignes << [' \nCapa already used']
 	}
 	if app.id_capa_select > -1 {
 		key := unit.capas[app.id_capa_select]
 		name := app.map_capa_exist[key].name
-		txt += ' \n${name}'
+		lignes << [' \n${name}']
 	}
-	playint.text_rect_render(app.ctx, app.text_cfg, app.ctx.width - 64, app.ctx.height / 2,
+
+	mut max_len := 0
+	mut txt := ''
+	for index, ligne in lignes{
+		if index != 0{
+			txt += '\n'
+		}
+		txt += ligne
+		// here 4 is a magic number due to the playint module
+		if max_len < ligne.len * 4{
+			max_len = ligne.len * 4
+		}
+	}
+
+	playint.text_rect_render(app.ctx, app.text_cfg, x - max_len, y,
 		true, true, txt, transparency - 40)
 }
 
