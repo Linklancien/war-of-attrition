@@ -350,23 +350,23 @@ fn game_render(app App) {
 	playint.text_rect_render(app.ctx, app.text_cfg, 32, 32, true, true, txt, transparency)
 
 	// units
-	app.units_render(transparency)
 	app.pv_render(transparency)
+	app.units_render(transparency)
 
 	// placements turns
 	if app.in_placement_turns {
-		app.placement_render(path.len == 0)
+		app.placement_render(path.len == 0, transparency)
 	}
 }
 
 // PLACEMENT
-fn (app App) placement_render(is_out_of_bounds bool){
+fn (app App) placement_render(is_out_of_bounds bool, transparency u8){
 	txt_plac := 'PLACEMENT TURNS
 	boundaries: ${app.placement_boundaries[app.player_id_turn]}'
 
 	playint.text_rect_render(app.ctx, app.text_cfg, app.ctx.width / 2, 32, true, true,
 		txt_plac, transparency)
-		
+
 	if is_out_of_bounds {
 		playint.text_rect_render(app.ctx, app.text_cfg, app.ctx.width / 2, app.ctx.height / 2,
 			true, true, 'OUT OF BOUNDS', transparency)
@@ -573,6 +573,13 @@ mut:
 }
 
 fn (app App) units_render(transparency u8) {
+	mut coo_mouse_x, mut coo_mouse_y := hexagons.coo_ortho_to_hexa_x(app.ctx.mouse_pos_x / app.radius,
+		app.ctx.mouse_pos_y / app.radius, app.world_map.len + app.dec_x,
+		app.world_map[0].len + app.dec_y)
+
+	coo_mouse_x -= app.dec_x
+	coo_mouse_y -= app.dec_y
+
 	// units
 	for coo_x in 0 .. app.world_map.len {
 		for coo_y in 0 .. app.world_map[coo_x].len {
@@ -584,6 +591,10 @@ fn (app App) units_render(transparency u8) {
 						unit_id := troop.id
 						app.players_units_liste[team][unit_id].render(app.ctx, app.radius,
 							pos_x * app.radius, pos_y * app.radius, transparency, app)
+
+						if coo_x == coo_mouse_x && coo_y == coo_mouse_y{
+							app.players_units_liste[team][unit_id].placed_stats_render(app.ctx, unit_id, app, app.ctx.mouse_pos_x, app.ctx.mouse_pos_y, transparency)
+						}
 					}
 					else {}
 				}
