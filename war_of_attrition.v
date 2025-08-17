@@ -4,7 +4,6 @@ import linklancien.playint { Appli, Button, attenuation }
 import hexagons { Hexa_tile }
 import os
 import gg { KeyCode }
-import gx
 import math.vec { Vec2 }
 import json
 
@@ -18,7 +17,7 @@ struct App {
 mut:
 	// for this project:
 	player_liste []string
-	player_color []gx.Color
+	player_color []gg.Color
 
 	playing bool
 
@@ -58,7 +57,7 @@ mut:
 
 struct Tile {
 mut:
-	color gx.Color = gx.Color{0, 125, 0, 255}
+	color gg.Color = gg.Color{0, 125, 0, 255}
 }
 
 fn main() {
@@ -82,7 +81,7 @@ fn main() {
 
 	// setup before starting
 	app.player_liste << ['RED', 'BLUE']
-	app.player_color << [gx.Color{125, 0, 0, 255}, gx.Color{0, 0, 125, 255}]
+	app.player_color << [gg.Color{125, 0, 0, 255}, gg.Color{0, 0, 125, 255}]
 
 	app.players_units_liste = [][]Units{len: app.player_liste.len, init: []Units{}}
 	app.players_units_to_place_ids = [][]int{len: app.player_liste.len, init: []int{}}
@@ -583,7 +582,7 @@ fn (app App) units_render(transparency u8) {
 // for referencing in app.world_map
 struct Troops {
 mut:
-	color   gx.Color = gx.Color{125, 125, 125, 255}
+	color   gg.Color = gg.Color{125, 125, 125, 255}
 	team_nb int
 	id      int
 }
@@ -596,7 +595,7 @@ mut:
 	mouvements     int
 	pv             int @[required]
 	capas          []string
-	color          gx.Color = gx.Color{125, 125, 125, 255} @[skip]
+	color          gg.Color = gg.Color{125, 125, 125, 255} @[skip]
 	status_effects []int    = []int{len: int(Effects.end_timed_effects)}    @[skip]
 
 	capa_used bool @[skip]
