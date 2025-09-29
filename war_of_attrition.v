@@ -6,9 +6,13 @@ import os
 import gg { KeyCode }
 import math.vec { Vec2 }
 import json
+import capas
+import capas.base {id_pv}
 
 const bg_color = gg.Color{0, 0, 0, 255}
 const font_path = os.resource_abs_path('FontMono.ttf')
+
+const id_mvt = 7
 
 type Effect_fn = fn (mut Units, int) int
 
@@ -36,8 +40,10 @@ mut:
 	in_waiting_screen bool
 
 	// for the game
-	effects_functions []Effect_fn
-	player_id_turn    int
+	// interface Turn_based_rules:
+	rule      Rules
+	team_turn int
+	team_nb   int
 
 	radius f32 = 30
 	dec_x  int = 2
@@ -45,7 +51,6 @@ mut:
 
 	// important for save
 	world_map           [][][]Hexa_tile
-	players_units_liste [][]Units
 
 	//
 	in_selection   bool
@@ -83,9 +88,6 @@ fn main() {
 	app.player_liste << ['RED', 'BLUE']
 	app.player_color << [gg.Color{125, 0, 0, 255}, gg.Color{0, 0, 125, 255}]
 
-	app.players_units_liste = [][]Units{len: app.player_liste.len, init: []Units{}}
-	app.players_units_to_place_ids = [][]int{len: app.player_liste.len, init: []int{}}
-
 	app.capas_load()
 	app.units_load()
 	app.images_load()
@@ -100,6 +102,7 @@ fn main() {
 			app.players_units_liste[p][app.players_units_liste[p].len - 1].color = app.player_color[p]
 		}
 	}
+
 	app.world_map = [][][]Hexa_tile{len: 24, init: [][]Hexa_tile{len: 12, init: []Hexa_tile{len: 1, init: Hexa_tile(Tile{})}}}
 	app.placement_boundaries = [[0, 5, 0, app.world_map[0].len],
 		[app.world_map.len - 5, app.world_map.len, 0, app.world_map[0].len]]
@@ -113,17 +116,19 @@ fn main() {
 fn on_init(mut app App) {
 	app.buttons_initialistation()
 	app.actions_initialistation()
-	app.effects_initialistation()
+	app.rule = base.init_rule_base(app.team_nb, capas.Deck_type.dead_array)
+
+	app.rule.add_mark(Mark_config{
+		name:        'MVT'
+		description: "Count by how many the unit have move this turn"
+		effect:      mvt_effect
+	})
 }
 
 fn on_frame(mut app App) {
 	app.ctx.begin()
 	if app.playing {
-		if app.in_waiting_screen {
-			waiting_screen_render(app)
-		} else {
-			game_render(app)
-		}
+		app.game()
 	} else {
 		main_menu_render(app)
 	}
@@ -307,6 +312,25 @@ fn waiting_screen_render(app App) {
 }
 
 // game fn: ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+fn (mut app App)game(){
+	if app.in_waiting_screen {
+		waiting_screen_render(app)
+	} else {
+		game_render(app)
+	}
+}
+
+fn (mut app App) turn(){
+	if app.player_id_turn == 0 {
+		app.player_id_turn = app.player_liste.len - 1
+		if app.in_placement_turns {
+			app.in_placement_turns = false
+		}
+	} else {
+		app.player_id_turn -= 1
+	}
+}
+
 fn game_render(app App) {
 	mut transparency := u8(255)
 	if app.changing_options {
@@ -323,7 +347,7 @@ fn game_render(app App) {
 			coo_y -= app.dec_y
 			distance := hexagons.distance_hexa_x(app.pos_select_x, app.pos_select_y, coo_x,
 				coo_y)
-			mvt := app.players_units_liste[app.player_id_turn][app.troop_select.id].mouvements
+			mvt := app.rule.team.permanent[app.player_id_turn][app.troop_select.id].marks[id_mvt]
 			if coo_x != -1 && coo_y != -1 && distance <= mvt {
 				path = hexagons.path_to_hexa_x(app.pos_select_x, app.pos_select_y, coo_x,
 					coo_y, app.world_map.len + app.dec_x, app.world_map[0].len + app.dec_y)
@@ -379,7 +403,7 @@ fn game_render(app App) {
 
 		if len > 0 {
 			unit_id := app.players_units_to_place_ids[team][len - 1]
-			app.players_units_liste[team][unit_id].stats_render(app.ctx, unit_id, app,
+			app.rule.team.permanent[team][unit_id].stats_render(app.ctx, unit_id, app,
 				transparency)
 		}
 	}
@@ -387,11 +411,11 @@ fn game_render(app App) {
 
 fn (app App) pv_render(transparency u8) {
 	mut txt_pv := ''
-	for id, unit in app.players_units_liste[app.player_id_turn] {
+	for id, unit in app.rule.team.permanent[app.player_id_turn] {
 		if id == 0 {
-			txt_pv += '${id}: ${unit.pv}/${unit.pv_max}'
+			txt_pv += '${id}: ${unit.marks[id_pv]}/${unit.initiliazed_mark['PV']}'
 		} else {
-			txt_pv += '\n${id}: ${unit.pv}/${unit.pv_max}'
+			txt_pv += '\n${id}: ${unit.marks[id_pv]}/${unit.initiliazed_mark['PV']}'
 		}
 	}
 	playint.text_rect_render(app.ctx, app.text_cfg, 48, app.ctx.height / 2, true, true,
@@ -463,9 +487,9 @@ fn (mut app App) units_interactions(coo_x int, coo_y int) {
 		if app.id_capa_select == -1 {
 			unit_move(mut app, coo_x, coo_y)
 		} else {
-			if !app.players_units_liste[app.player_id_turn][app.troop_select.id].capa_used {
-				app.players_units_liste[app.player_id_turn][app.troop_select.id].capa_used = true
-				key := app.players_units_liste[app.player_id_turn][app.troop_select.id].capas[app.id_capa_select]
+			if !app.rule.team.permanent[app.player_id_turn][app.troop_select.id].capa_used {
+				app.rule.team.permanent[app.player_id_turn][app.troop_select.id].capa_used = true
+				key := app.rule.team.permanent[app.player_id_turn][app.troop_select.id].capas[app.id_capa_select]
 				app.map_capa_exist[key].use(mut app)
 				app.world_map[app.pos_select_x][app.pos_select_y] << [
 					Troops{
@@ -474,7 +498,7 @@ fn (mut app App) units_interactions(coo_x int, coo_y int) {
 						id:      app.troop_select.id
 					},
 				]
-				app.check_death()
+				app.rule.team.update_permanent()
 			}
 		}
 
@@ -484,7 +508,7 @@ fn (mut app App) units_interactions(coo_x int, coo_y int) {
 }
 
 fn unit_move(mut app App, coo_x int, coo_y int) {
-	mvt := app.players_units_liste[app.player_id_turn][app.troop_select.id].mouvements
+	mvt := app.app.rule.team.permanent[app.player_id_turn][app.troop_select.id].marks[id_mvt]
 	distance := hexagons.distance_hexa_x(app.pos_select_x, app.pos_select_y, coo_x, coo_y)
 	if app.world_map[coo_x][coo_y].len < 2 && distance <= mvt {
 		app.world_map[coo_x][coo_y] << [
@@ -494,7 +518,7 @@ fn unit_move(mut app App, coo_x int, coo_y int) {
 				id:      app.troop_select.id
 			},
 		]
-		app.players_units_liste[app.player_id_turn][app.troop_select.id].mouvements -= distance
+		app.app.rule.team.permanent[app.player_id_turn][app.troop_select.id].marks[id_mvt] -= distance
 	} else {
 		app.world_map[app.pos_select_x][app.pos_select_y] << [
 			Troops{
@@ -503,25 +527,6 @@ fn unit_move(mut app App, coo_x int, coo_y int) {
 				id:      app.troop_select.id
 			},
 		]
-	}
-}
-
-fn (mut app App) check_death() {
-	for x in 0 .. app.world_map.len {
-		for y in 0 .. app.world_map[0].len {
-			mut correctif_id := 0
-			for id in 1 .. app.world_map[x][y].len {
-				troop := app.world_map[x][y][id - correctif_id]
-				if troop is Troops {
-					team := troop.team_nb
-					index := troop.id
-					if app.players_units_liste[team][index].pv <= 0 {
-						app.world_map[x][y].delete(id - correctif_id)
-						correctif_id += 1
-					}
-				}
-			}
-		}
 	}
 }
 
@@ -540,7 +545,7 @@ fn capa_short_cut(mut app Appli, capa int) {
 		if !app.changing_options {
 			if app.id_capa_select == capa {
 				app.id_capa_select = -1
-			} else if capa < app.players_units_liste[app.player_id_turn][app.troop_select.id].capas.len {
+			} else if capa < app.rule.team.permanent[app.player_id_turn][app.troop_select.id].cast_fn.len {
 				app.id_capa_select = capa
 			}
 		}
@@ -588,38 +593,10 @@ mut:
 }
 
 struct Units {
-	mouvements_max int    @[required]
-	pv_max         int    @[required]
-	name           string @[required]
+	capas.Spell
 mut:
-	mouvements     int
-	pv             int @[required]
-	capas          []string
 	color          gg.Color = gg.Color{125, 125, 125, 255} @[skip]
-	status_effects []int    = []int{len: int(Effects.end_timed_effects)}    @[skip]
-
 	capa_used bool @[skip]
-}
-
-fn (mut unit Units) set_mouvements() {
-	unit.mouvements = unit.mouvements_max
-	unit.capa_used = false
-}
-
-fn (mut unit Units) status_change(app App) {
-	for id, mut value in unit.status_effects {
-		value = app.effects_functions[id](mut unit, value)
-	}
-}
-
-fn (mut unit Units) damage(effects []int, app App) {
-	for id, value in effects {
-		if id < int(Effects.end_timed_effects) {
-			unit.status_effects[id] += value
-		} else if id < int(Effects.end_effects) && id != int(Effects.end_timed_effects) {
-			app.effects_functions[id](mut unit, value)
-		}
-	}
 }
 
 fn (unit Units) render(ctx gg.Context, radius f32, pos_x f32, pos_y f32, transparency u8, app App) {
@@ -638,7 +615,7 @@ fn (unit Units) stats_render(ctx gg.Context, id int, app App, transparency u8) {
 	${unit.name}: ${id}
 	Pv: ${unit.pv}/${unit.pv_max}
 	Mouvements: ${unit.mouvements}/${unit.mouvements_max}
-	Status: ${unit.status_effects}
+	Status: ${unit.marks}
 	Capas: ${app.id_capa_select}/${unit.capas.len}'
 	if unit.capa_used {
 		txt += ' \nCapa already used'
@@ -753,85 +730,6 @@ fn (attack Attack) forme(app App) [][]int {
 	}
 }
 
-// Effects
-enum Effects {
-	poison
-	bleed
-	regeneration
-	stun
-
-	end_timed_effects
-
-	damage
-	heal
-
-	end_effects
-}
-
-// timed
-fn poison_fn(mut unit Units, value int) int {
-	if value <= 0 {
-		return 0
-	}
-	unit.pv -= 1
-	return value - 1
-}
-
-fn bleed_fn(mut unit Units, value int) int {
-	if value <= 0 {
-		return 0
-	}
-	unit.pv -= 1
-	return value - 1
-}
-
-fn regeneration_fn(mut unit Units, value int) int {
-	if value <= 0 {
-		return 0
-	}
-	if unit.pv < unit.pv_max {
-		unit.pv += 1
-	}
-	return value - 1
-}
-
-fn stun_fn(mut unit Units, value int) int {
-	if value <= 0 {
-		return 0
-	}
-	unit.capa_used = true
-	unit.mouvements = 0
-	return value - 1
-}
-
-// not timed
-fn damage_fn(mut unit Units, value int) int {
-	unit.pv -= value
-	return 0
-}
-
-fn heal_fn(mut unit Units, value int) int {
-	unit.pv += value
-	if unit.pv > unit.pv_max {
-		unit.pv = unit.pv_max
-	}
-	return 0
-}
-
-fn (mut app App) effects_initialistation() {
-	app.effects_functions = []Effect_fn{len: int(Effects.end_effects)}
-
-	// timed
-	app.effects_functions[int(Effects.poison)] = poison_fn
-	app.effects_functions[int(Effects.bleed)] = bleed_fn
-	app.effects_functions[int(Effects.regeneration)] = regeneration_fn
-	app.effects_functions[int(Effects.stun)] = stun_fn
-
-	// not timed
-	app.effects_functions[int(Effects.heal)] = heal_fn
-	app.effects_functions[int(Effects.damage)] = damage_fn
-}
-
 // Buttons: ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // start
 fn game_start(mut app Appli) {
@@ -884,14 +782,7 @@ fn start_turn_is_actionnable(mut app Appli) bool {
 fn end_turn(mut app Appli) {
 	if mut app is App {
 		// Change the current player
-		if app.player_id_turn == 0 {
-			app.player_id_turn = app.player_liste.len - 1
-			if app.in_placement_turns {
-				app.in_placement_turns = false
-			}
-		} else {
-			app.player_id_turn -= 1
-		}
+		app.turn()
 
 		// reset some variables
 		if app.in_selection {
@@ -904,11 +795,10 @@ fn end_turn(mut app Appli) {
 			]
 			app.in_selection = false
 		}
-		for mut unit in mut app.players_units_liste[app.player_id_turn] {
-			unit.set_mouvements()
-			unit.status_change(app)
-		}
-		app.check_death()
+
+		app.rule.all_marks_do_effect(app.player_id_turn)
+		app.rule.team.update_permanent()
+		
 		app.id_capa_select = -1
 		app.in_waiting_screen = true
 	}
