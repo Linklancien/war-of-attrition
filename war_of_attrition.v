@@ -14,8 +14,6 @@ const font_path = os.resource_abs_path('FontMono.ttf')
 
 const id_mvt = 7
 
-type Effect_fn = fn (mut Units, int) int
-
 struct App {
 	playint.Opt
 mut:
@@ -25,8 +23,7 @@ mut:
 
 	playing bool
 
-	map_unit_exist map[string]Units
-	map_capa_exist map[string]Capas
+	map_unit_exist map[string]Spell
 	map_image      map[string]gg.Image
 
 	// for placement turns:
@@ -122,6 +119,10 @@ fn on_init(mut app App) {
 		name:        'MVT'
 		description: "Count by how many the unit have move this turn"
 		effect:      mvt_effect
+	}, Mark_config{
+		name:        'ACTION POINTS'
+		description: "Count many action this unit can do this turn"
+		effect:      action_points_effect
 	})
 }
 
@@ -169,44 +170,44 @@ fn on_resized(e &gg.Event, mut app App) {
 // APP INIT: //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 fn (mut app App) capas_load() {
 	entries := os.ls(os.join_path('capas')) or { [] }
-
+	panic('To rework')
 	// load capas
-	for entry in entries {
-		path := os.join_path('capas', entry)
-		if os.is_dir(path) {
-			println('dir: ${entry}')
-		} else {
-			temp_capas := (os.read_file(path) or { panic('No temp_capas to load') })
-			capa := json.decode(Capas, temp_capas) or {
-				panic('Failed to decode json, path: ${path}, error: ${err}')
-			}
-			app.map_capa_exist[capa.name] = capa
-		}
-	}
+	// for entry in entries {
+	// 	path := os.join_path('capas', entry)
+	// 	if os.is_dir(path) {
+	// 		println('dir: ${entry}')
+	// 	} else {
+	// 		temp_capas := (os.read_file(path) or { panic('No temp_capas to load') })
+	// 		capa := json.decode(Capas, temp_capas) or {
+	// 			panic('Failed to decode json, path: ${path}, error: ${err}')
+	// 		}
+	// 		app.map_capa_exist[capa.name] = capa
+	// 	}
+	// }
 }
 
 fn (mut app App) units_load() {
 	entries := os.ls(os.join_path('units')) or { [] }
-
+	panic('To rework')
 	// load units
-	for entry in entries {
-		path := os.join_path('units', entry)
-		if os.is_dir(path) {
-			println('dir: ${entry}')
-		} else {
-			temp_units := (os.read_file(path) or { panic('No temp_units to load') })
-			unit := json.decode(Units, temp_units) or {
-				panic('Failed to decode json, error: ${err}')
-			}
+	// for entry in entries {
+	// 	path := os.join_path('units', entry)
+	// 	if os.is_dir(path) {
+	// 		println('dir: ${entry}')
+	// 	} else {
+	// 		temp_units := (os.read_file(path) or { panic('No temp_units to load') })
+	// 		unit := json.decode(Units, temp_units) or {
+	// 			panic('Failed to decode json, error: ${err}')
+	// 		}
 
-			app.map_unit_exist[unit.name] = unit
-		}
-	}
+	// 		app.map_unit_exist[unit.name] = unit
+	// 	}
+	// }
 }
 
 fn (mut app App) images_load() {
 	entries := os.ls(os.join_path('images')) or { [] }
-
+	panic('To rework')
 	// load units
 	for entry in entries {
 		path := os.join_path('images', entry)
@@ -403,7 +404,7 @@ fn game_render(app App) {
 
 		if len > 0 {
 			unit_id := app.players_units_to_place_ids[team][len - 1]
-			app.rule.team.permanent[team][unit_id].stats_render(app.ctx, unit_id, app,
+			app.rule.team.permanent[team][unit_id].stats_render(app.ctx, app,
 				transparency)
 		}
 	}
@@ -561,9 +562,7 @@ fn (app App) units_render(transparency u8) {
 			for mut troop in app.world_map[coo_x][coo_y][1..] {
 				match mut troop {
 					Troops {
-						team := troop.team_nb
-						unit_id := troop.id
-						app.players_units_liste[team][unit_id].render(app.ctx, app.radius,
+						troop.render(app.ctx, app.radius,
 							pos_x * app.radius, pos_y * app.radius, transparency, app)
 					}
 					else {}
@@ -576,32 +575,26 @@ fn (app App) units_render(transparency u8) {
 	if app.in_selection {
 		pos_x, pos_y := hexagons.coo_hexa_x_to_ortho(app.pos_select_x + app.dec_x,
 			app.pos_select_y + app.dec_y)
-		team := app.troop_select.team_nb
-		unit_id := app.troop_select.id
-		app.players_units_liste[team][unit_id].render(app.ctx, app.radius, pos_x * app.radius,
+		app.troop_select.render(app.ctx, app.radius, pos_x * app.radius,
 			pos_y * app.radius, transparency - 100, app)
-		app.players_units_liste[team][unit_id].stats_render(app.ctx, unit_id, app, transparency)
+		app.troop_select.stats_render(app.ctx, app, transparency)
 	}
 }
 
 // for referencing in app.world_map
 struct Troops {
 mut:
+	name string
 	color   gg.Color = gg.Color{125, 125, 125, 255}
 	team_nb int
 	id      int
 }
 
-struct Units {
-	capas.Spell
-mut:
-	color          gg.Color = gg.Color{125, 125, 125, 255} @[skip]
-	capa_used bool @[skip]
-}
+// Units -> capas.Spell
 
-fn (unit Units) render(ctx gg.Context, radius f32, pos_x f32, pos_y f32, transparency u8, app App) {
-	ctx.draw_circle_filled(pos_x, pos_y, radius - 10, attenuation(unit.color, transparency))
-	if image := app.map_image[unit.name] {
+fn (troop Troops) render(ctx gg.Context, radius f32, pos_x f32, pos_y f32, transparency u8, app App) {
+	ctx.draw_circle_filled(pos_x, pos_y, radius - 10, attenuation(troop.color, transparency))
+	if image := app.map_image[troop.name] {
 		ctx.draw_image(pos_x - radius / 2, pos_y - radius / 2, radius, radius, image)
 	} else {
 		ctx.draw_image(pos_x - radius / 2, pos_y - radius / 2, radius, radius, app.map_image['error'] or {
@@ -610,19 +603,19 @@ fn (unit Units) render(ctx gg.Context, radius f32, pos_x f32, pos_y f32, transpa
 	}
 }
 
-fn (unit Units) stats_render(ctx gg.Context, id int, app App, transparency u8) {
+fn (troop Troops) stats_render(ctx gg.Context, app App, transparency u8) {
+	unit := app.rule.team.permanent[troop.team_nb][troop.id]
 	mut txt := 'UNIT Select:
-	${unit.name}: ${id}
-	Pv: ${unit.pv}/${unit.pv_max}
-	Mouvements: ${unit.mouvements}/${unit.mouvements_max}
+	${troop.name}: ${troop.id}
+	Pv: ${unit.marks[id_pv]}/${unit.initiliazed_mark['PV']}
+	Mouvements: ${unit.marks[id_mvt]}/${unit.initiliazed_mark['MVT']}
 	Status: ${unit.marks}
-	Capas: ${app.id_capa_select}/${unit.capas.len}'
-	if unit.capa_used {
+	Capas: ${app.id_capa_select}/${unit.cast_fn.len}'
+	if unit.marks[id_action_point] <= 0 {
 		txt += ' \nCapa already used'
 	}
 	if app.id_capa_select > -1 {
-		key := unit.capas[app.id_capa_select]
-		name := app.map_capa_exist[key].name
+		name := unit.cast_fn[key].name
 		txt += ' \n${name}'
 	}
 	playint.text_rect_render(app.ctx, app.text_cfg, app.ctx.width - 64, app.ctx.height / 2,
@@ -665,11 +658,11 @@ mut:
 	range        int @[required]
 	shape_type   int @[required]
 
-	effects []int = []int{len: int(Effects.end_effects)} @[required]
+	function []capas.Spell_fn
 	// it len is the nb of Effects possibles
 }
 
-fn (attack Attack) fire(mut app App) {
+fn (attack Attack) fire(mut app App, effect []int) {
 	concerned := attack.forme(app)
 	for pos in concerned {
 		coo_x := pos[0]
@@ -677,12 +670,12 @@ fn (attack Attack) fire(mut app App) {
 		if coo_x >= 0 && coo_y >= 0 {
 			for troop in app.world_map[coo_x][coo_y][1..] {
 				if troop is Troops {
-					app.players_units_liste[troop.team_nb][troop.id].damage(attack.effects,
+					app.players_units_liste[troop.team_nb][troop.id].damage(effects,
 						app)
 				}
 			}
 			if coo_x == app.pos_select_x && coo_y == app.pos_select_y {
-				app.players_units_liste[app.troop_select.team_nb][app.troop_select.id].damage(attack.effects,
+				app.players_units_liste[app.troop_select.team_nb][app.troop_select.id].damage(effects,
 					app)
 			}
 		}
