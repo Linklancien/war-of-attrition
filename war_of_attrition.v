@@ -85,18 +85,18 @@ fn main() {
 	app.player_name_list << ['RED', 'BLUE']
 	app.player_color << [gg.Color{125, 0, 0, 255}, gg.Color{0, 0, 125, 255}]
 
-	app.capas_load()
-	app.units_load()
-	app.images_load()
+	// app.capas_load()
+	// app.units_load()
+	// app.images_load()
 
 	// for p in 0 .. app.player_name_list.len {
 	// 	list_unit := ['Healer', 'Tank', 'Grenade Soldier', 'Toxic Soldier']
 	// 	for next in list_unit {
-	// 		app.rule.team.hand[p] << [app.players_units_liste[p].len]
-	// 		app.players_units_liste[p] << [
+	// 		app.rule.team.hand[p] << [app.rule.team.permanent[p].len]
+	// 		app.rule.team.permanent[p] << [
 	// 			app.map_unit_exist[next],
 	// 		]
-	// 		app.players_units_liste[p][app.players_units_liste[p].len - 1].color = app.player_color[p]
+	// 		app.rule.team.permanent[p][app.rule.team.permanent[p].len - 1].color = app.player_color[p]
 	// 	}
 	// }
 
@@ -124,6 +124,8 @@ fn on_init(mut app App) {
 		description: "Count many action this unit can do this turn"
 		effect:      action_points_effect
 	})
+
+	println(app.rule)
 }
 
 fn on_frame(mut app App) {
@@ -354,8 +356,8 @@ fn game_render(app App) {
 					coo_y, app.world_map.len + app.dec_x, app.world_map[0].len + app.dec_y)
 			}
 		} else {
-			key := app.players_units_liste[app.team_turn][app.troop_select.id].capas[app.id_capa_select]
-			path = app.map_capa_exist[key].previsualisation(app)
+			// key := app.rule.team.permanent[app.team_turn][app.troop_select.id].capas[app.id_capa_select]
+			// path = app.map_capa_exist[key].previsualisation(app)
 		}
 	}
 	if app.in_placement_turns {
@@ -403,9 +405,9 @@ fn game_render(app App) {
 			true, txt_nb, transparency)
 
 		if len > 0 {
-			unit_id := app.rule.team.hand[team][len - 1]
-			app.rule.team.permanent[team][unit_id].stats_render(app.ctx, app,
-				transparency)
+			// unit_id := app.rule.team.hand[team][len - 1]
+			// app.rule.team.permanent[team][unit_id].stats_render(app.ctx, app,
+			// 	transparency)
 		}
 	}
 }
@@ -438,7 +440,7 @@ fn (mut app App) check_placement() {
 				app.world_map[coo_x][coo_y] << [
 					Troops{
 						team_nb: app.team_turn
-						id:      app.rule.team.hand[app.team_turn].pop()
+						id:      app.rule.team.permanent[app.team_turn].len
 					},
 				]
 			}
@@ -488,10 +490,10 @@ fn (mut app App) units_interactions(coo_x int, coo_y int) {
 		if app.id_capa_select == -1 {
 			unit_move(mut app, coo_x, coo_y)
 		} else {
-			if !app.rule.team.permanent[app.team_turn][app.troop_select.id].capa_used {
-				app.rule.team.permanent[app.team_turn][app.troop_select.id].capa_used = true
-				key := app.rule.team.permanent[app.team_turn][app.troop_select.id].capas[app.id_capa_select]
-				app.map_capa_exist[key].use(mut app)
+			if app.rule.team.permanent[app.team_turn][app.troop_select.id].marks[id_action_point] > 0  {
+				app.rule.team.permanent[app.team_turn][app.troop_select.id].marks[id_action_point] -= 1
+				// key := app.rule.team.permanent[app.team_turn][app.troop_select.id].capas[app.id_capa_select]
+				// app.map_capa_exist[key].use(mut app)
 				app.world_map[app.pos_select_x][app.pos_select_y] << [
 					Troops{
 						color:   app.troop_select.color
@@ -509,7 +511,7 @@ fn (mut app App) units_interactions(coo_x int, coo_y int) {
 }
 
 fn unit_move(mut app App, coo_x int, coo_y int) {
-	mvt := app.app.rule.team.permanent[app.team_turn][app.troop_select.id].marks[id_mvt]
+	mvt := app.rule.team.permanent[app.team_turn][app.troop_select.id].marks[id_mvt]
 	distance := hexagons.distance_hexa_x(app.pos_select_x, app.pos_select_y, coo_x, coo_y)
 	if app.world_map[coo_x][coo_y].len < 2 && distance <= mvt {
 		app.world_map[coo_x][coo_y] << [
@@ -519,7 +521,7 @@ fn unit_move(mut app App, coo_x int, coo_y int) {
 				id:      app.troop_select.id
 			},
 		]
-		app.app.rule.team.permanent[app.team_turn][app.troop_select.id].marks[id_mvt] -= distance
+		app.rule.team.permanent[app.team_turn][app.troop_select.id].marks[id_mvt] -= distance
 	} else {
 		app.world_map[app.pos_select_x][app.pos_select_y] << [
 			Troops{
@@ -615,11 +617,25 @@ fn (troop Troops) stats_render(ctx gg.Context, app App, transparency u8) {
 		txt += ' \nCapa already used'
 	}
 	if app.id_capa_select > -1 {
-		name := unit.cast_fn[key].name
+		name := unit.cast_fn[app.id_capa_select].name
 		txt += ' \n${name}'
 	}
 	playint.text_rect_render(app.ctx, app.text_cfg, app.ctx.width - 64, app.ctx.height / 2,
 		true, true, txt, transparency - 40)
+}
+
+// EFFECTS fn
+
+fn mvt_effect(id int, mut spells_list []Spell) {
+	for mut spell in spells_list {
+		spell.marks[id] = spell.initiliazed_mark['MVT']
+	}
+}
+
+fn action_points_effect(id int, mut spells_list []Spell) {
+	for mut spell in spells_list {
+		spell.marks[id] = spell.initiliazed_mark['ACTION POINTS']
+	}
 }
 
 // Attack
@@ -638,9 +654,9 @@ fn (capa Capas) previsualisation(app App) [][]int {
 }
 
 fn (mut capa Capas) use(mut app App) {
-	for attack in capa.attacks {
-		attack.fire(mut app)
-	}
+// 	for attack in capa.attacks {
+// 		// attack.fire(mut app)
+// 	}
 }
 
 enum Possible_shape {
@@ -670,13 +686,13 @@ fn (attack Attack) fire(mut app App, effect []int) {
 		if coo_x >= 0 && coo_y >= 0 {
 			for troop in app.world_map[coo_x][coo_y][1..] {
 				if troop is Troops {
-					app.players_units_liste[troop.team_nb][troop.id].to_do_damage_fn(effects,
-						app)
+					// app.rule.team.permanent[troop.team_nb][troop.id].to_do_damage_fn(effects,
+					// 	app)
 				}
 			}
 			if coo_x == app.pos_select_x && coo_y == app.pos_select_y {
-				app.players_units_liste[app.troop_select.team_nb][app.troop_select.id].to_do_damage_fn(effects,
-					app)
+				// app.rule.team.permanent[app.troop_select.team_nb][app.troop_select.id].to_do_damage_fn(effects,
+					// app)
 			}
 		}
 	}
