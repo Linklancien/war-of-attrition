@@ -40,7 +40,7 @@ mut:
 	// interface Turn_based_rules:
 	rule      Rules
 	team_turn int
-	team_nb   int
+	team_nb   int = 2
 
 	radius f32 = 30
 	dec_x  int = 2
