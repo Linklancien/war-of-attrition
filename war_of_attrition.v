@@ -5,20 +5,21 @@ import hexagons { Hexa_tile }
 import os
 import gg { KeyCode }
 import math.vec { Vec2 }
-import json
-import capas
-import capas.base {id_pv}
+// import json
+import linklancien.capas {Spell, Rules, Mark_config}
+import linklancien.capas.base
 
 const bg_color = gg.Color{0, 0, 0, 255}
 const font_path = os.resource_abs_path('FontMono.ttf')
 
 const id_mvt = 7
+const id_action_point = 8
 
 struct App {
 	playint.Opt
 mut:
 	// for this project:
-	player_liste []string
+	player_name_list []string
 	player_color []gg.Color
 
 	playing bool
@@ -31,7 +32,6 @@ mut:
 
 	// format: [x, max_x, y max_y]
 	in_placement_turns         bool
-	players_units_to_place_ids [][]int
 
 	// for waitingscreen
 	in_waiting_screen bool
@@ -82,23 +82,23 @@ fn main() {
 	)
 
 	// setup before starting
-	app.player_liste << ['RED', 'BLUE']
+	app.player_name_list << ['RED', 'BLUE']
 	app.player_color << [gg.Color{125, 0, 0, 255}, gg.Color{0, 0, 125, 255}]
 
 	app.capas_load()
 	app.units_load()
 	app.images_load()
 
-	for p in 0 .. app.player_liste.len {
-		list_unit := ['Healer', 'Tank', 'Grenade Soldier', 'Toxic Soldier']
-		for next in list_unit {
-			app.players_units_to_place_ids[p] << [app.players_units_liste[p].len]
-			app.players_units_liste[p] << [
-				app.map_unit_exist[next],
-			]
-			app.players_units_liste[p][app.players_units_liste[p].len - 1].color = app.player_color[p]
-		}
-	}
+	// for p in 0 .. app.player_name_list.len {
+	// 	list_unit := ['Healer', 'Tank', 'Grenade Soldier', 'Toxic Soldier']
+	// 	for next in list_unit {
+	// 		app.rule.team.hand[p] << [app.players_units_liste[p].len]
+	// 		app.players_units_liste[p] << [
+	// 			app.map_unit_exist[next],
+	// 		]
+	// 		app.players_units_liste[p][app.players_units_liste[p].len - 1].color = app.player_color[p]
+	// 	}
+	// }
 
 	app.world_map = [][][]Hexa_tile{len: 24, init: [][]Hexa_tile{len: 12, init: []Hexa_tile{len: 1, init: Hexa_tile(Tile{})}}}
 	app.placement_boundaries = [[0, 5, 0, app.world_map[0].len],
@@ -169,8 +169,8 @@ fn on_resized(e &gg.Event, mut app App) {
 
 // APP INIT: //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 fn (mut app App) capas_load() {
-	entries := os.ls(os.join_path('capas')) or { [] }
 	panic('To rework')
+	// entries := os.ls(os.join_path('capas')) or { [] }
 	// load capas
 	// for entry in entries {
 	// 	path := os.join_path('capas', entry)
@@ -187,8 +187,8 @@ fn (mut app App) capas_load() {
 }
 
 fn (mut app App) units_load() {
-	entries := os.ls(os.join_path('units')) or { [] }
 	panic('To rework')
+	// entries := os.ls(os.join_path('units')) or { [] }
 	// load units
 	// for entry in entries {
 	// 	path := os.join_path('units', entry)
@@ -295,9 +295,9 @@ fn main_menu_render(app App) {
 }
 
 fn draw_players_names(app App, transparency u8) {
-	for player_id in 0 .. app.player_liste.len {
+	for player_id in 0 .. app.player_name_list.len {
 		playint.text_rect_render(app.ctx, app.text_cfg, 0, player_id * app.text_cfg.size * 2,
-			false, false, app.player_liste[player_id], transparency)
+			false, false, app.player_name_list[player_id], transparency)
 	}
 }
 
@@ -307,7 +307,7 @@ fn waiting_screen_render(app App) {
 	if app.changing_options {
 		transparency = 150
 	}
-	txt := app.player_liste[app.player_id_turn]
+	txt := app.player_name_list[app.team_turn]
 	playint.text_rect_render(app.ctx, app.text_cfg, app.ctx.width / 2, app.ctx.height / 2,
 		true, true, txt, transparency)
 }
@@ -322,13 +322,13 @@ fn (mut app App)game(){
 }
 
 fn (mut app App) turn(){
-	if app.player_id_turn == 0 {
-		app.player_id_turn = app.player_liste.len - 1
+	if app.team_turn == 0 {
+		app.team_turn = app.player_name_list.len - 1
 		if app.in_placement_turns {
 			app.in_placement_turns = false
 		}
 	} else {
-		app.player_id_turn -= 1
+		app.team_turn -= 1
 	}
 }
 
@@ -348,13 +348,13 @@ fn game_render(app App) {
 			coo_y -= app.dec_y
 			distance := hexagons.distance_hexa_x(app.pos_select_x, app.pos_select_y, coo_x,
 				coo_y)
-			mvt := app.rule.team.permanent[app.player_id_turn][app.troop_select.id].marks[id_mvt]
+			mvt := app.rule.team.permanent[app.team_turn][app.troop_select.id].marks[id_mvt]
 			if coo_x != -1 && coo_y != -1 && distance <= mvt {
 				path = hexagons.path_to_hexa_x(app.pos_select_x, app.pos_select_y, coo_x,
 					coo_y, app.world_map.len + app.dec_x, app.world_map[0].len + app.dec_y)
 			}
 		} else {
-			key := app.players_units_liste[app.player_id_turn][app.troop_select.id].capas[app.id_capa_select]
+			key := app.players_units_liste[app.team_turn][app.troop_select.id].capas[app.id_capa_select]
 			path = app.map_capa_exist[key].previsualisation(app)
 		}
 	}
@@ -376,7 +376,7 @@ fn game_render(app App) {
 		path, transparency)
 
 	// player turn
-	txt := app.player_liste[app.player_id_turn]
+	txt := app.player_name_list[app.team_turn]
 	playint.text_rect_render(app.ctx, app.text_cfg, 32, 32, true, true, txt, transparency)
 
 	// units
@@ -386,7 +386,7 @@ fn game_render(app App) {
 	// placements turns
 	if app.in_placement_turns {
 		txt_plac := 'PLACEMENT TURNS
-		boundaries: ${app.placement_boundaries[app.player_id_turn]}'
+		boundaries: ${app.placement_boundaries[app.team_turn]}'
 
 		playint.text_rect_render(app.ctx, app.text_cfg, app.ctx.width / 2, 32, true, true,
 			txt_plac, transparency)
@@ -396,14 +396,14 @@ fn game_render(app App) {
 				true, true, 'OUT OF BOUNDS', transparency)
 		}
 
-		team := app.player_id_turn
-		len := app.players_units_to_place_ids[team].len
+		team := app.team_turn
+		len := app.rule.team.hand[team].len
 		txt_nb := 'UNITS TO PLACE: ${len}'
 		playint.text_rect_render(app.ctx, app.text_cfg, app.ctx.width - 128, 32, true,
 			true, txt_nb, transparency)
 
 		if len > 0 {
-			unit_id := app.players_units_to_place_ids[team][len - 1]
+			unit_id := app.rule.team.hand[team][len - 1]
 			app.rule.team.permanent[team][unit_id].stats_render(app.ctx, app,
 				transparency)
 		}
@@ -412,11 +412,11 @@ fn game_render(app App) {
 
 fn (app App) pv_render(transparency u8) {
 	mut txt_pv := ''
-	for id, unit in app.rule.team.permanent[app.player_id_turn] {
+	for id, unit in app.rule.team.permanent[app.team_turn] {
 		if id == 0 {
-			txt_pv += '${id}: ${unit.marks[id_pv]}/${unit.initiliazed_mark['PV']}'
+			txt_pv += '${id}: ${unit.marks[base.id_pv]}/${unit.initiliazed_mark['PV']}'
 		} else {
-			txt_pv += '\n${id}: ${unit.marks[id_pv]}/${unit.initiliazed_mark['PV']}'
+			txt_pv += '\n${id}: ${unit.marks[base.id_pv]}/${unit.initiliazed_mark['PV']}'
 		}
 	}
 	playint.text_rect_render(app.ctx, app.text_cfg, 48, app.ctx.height / 2, true, true,
@@ -433,12 +433,12 @@ fn (mut app App) check_placement() {
 		coo_y -= app.dec_y
 
 		if coo_x >= 0 && coo_y >= 0 && app.check_placement_possible(coo_x, coo_y) {
-			if app.players_units_to_place_ids[app.player_id_turn].len > 0
+			if app.rule.team.hand[app.team_turn].len > 0
 				&& app.world_map[coo_x][coo_y].len < 2 {
 				app.world_map[coo_x][coo_y] << [
 					Troops{
-						team_nb: app.player_id_turn
-						id:      app.players_units_to_place_ids[app.player_id_turn].pop()
+						team_nb: app.team_turn
+						id:      app.rule.team.hand[app.team_turn].pop()
 					},
 				]
 			}
@@ -447,7 +447,7 @@ fn (mut app App) check_placement() {
 }
 
 fn (app App) check_placement_possible(coo_x int, coo_y int) bool {
-	boundaries := app.placement_boundaries[app.player_id_turn]
+	boundaries := app.placement_boundaries[app.team_turn]
 	return boundaries[0] <= coo_x && coo_x < boundaries[1] && boundaries[2] <= coo_y
 		&& coo_y < boundaries[3]
 }
@@ -471,7 +471,7 @@ fn (mut app App) units_interactions(coo_x int, coo_y int) {
 	if !app.in_selection && app.world_map[coo_x][coo_y].len > 1 {
 		tempo := app.world_map[coo_x][coo_y].pop()
 		if tempo is Troops {
-			if tempo.team_nb == app.player_id_turn {
+			if tempo.team_nb == app.team_turn {
 				app.troop_select = tempo
 
 				app.pos_select_x = coo_x
@@ -488,9 +488,9 @@ fn (mut app App) units_interactions(coo_x int, coo_y int) {
 		if app.id_capa_select == -1 {
 			unit_move(mut app, coo_x, coo_y)
 		} else {
-			if !app.rule.team.permanent[app.player_id_turn][app.troop_select.id].capa_used {
-				app.rule.team.permanent[app.player_id_turn][app.troop_select.id].capa_used = true
-				key := app.rule.team.permanent[app.player_id_turn][app.troop_select.id].capas[app.id_capa_select]
+			if !app.rule.team.permanent[app.team_turn][app.troop_select.id].capa_used {
+				app.rule.team.permanent[app.team_turn][app.troop_select.id].capa_used = true
+				key := app.rule.team.permanent[app.team_turn][app.troop_select.id].capas[app.id_capa_select]
 				app.map_capa_exist[key].use(mut app)
 				app.world_map[app.pos_select_x][app.pos_select_y] << [
 					Troops{
@@ -509,7 +509,7 @@ fn (mut app App) units_interactions(coo_x int, coo_y int) {
 }
 
 fn unit_move(mut app App, coo_x int, coo_y int) {
-	mvt := app.app.rule.team.permanent[app.player_id_turn][app.troop_select.id].marks[id_mvt]
+	mvt := app.app.rule.team.permanent[app.team_turn][app.troop_select.id].marks[id_mvt]
 	distance := hexagons.distance_hexa_x(app.pos_select_x, app.pos_select_y, coo_x, coo_y)
 	if app.world_map[coo_x][coo_y].len < 2 && distance <= mvt {
 		app.world_map[coo_x][coo_y] << [
@@ -519,7 +519,7 @@ fn unit_move(mut app App, coo_x int, coo_y int) {
 				id:      app.troop_select.id
 			},
 		]
-		app.app.rule.team.permanent[app.player_id_turn][app.troop_select.id].marks[id_mvt] -= distance
+		app.app.rule.team.permanent[app.team_turn][app.troop_select.id].marks[id_mvt] -= distance
 	} else {
 		app.world_map[app.pos_select_x][app.pos_select_y] << [
 			Troops{
@@ -546,7 +546,7 @@ fn capa_short_cut(mut app Appli, capa int) {
 		if !app.changing_options {
 			if app.id_capa_select == capa {
 				app.id_capa_select = -1
-			} else if capa < app.rule.team.permanent[app.player_id_turn][app.troop_select.id].cast_fn.len {
+			} else if capa < app.rule.team.permanent[app.team_turn][app.troop_select.id].cast_fn.len {
 				app.id_capa_select = capa
 			}
 		}
@@ -607,7 +607,7 @@ fn (troop Troops) stats_render(ctx gg.Context, app App, transparency u8) {
 	unit := app.rule.team.permanent[troop.team_nb][troop.id]
 	mut txt := 'UNIT Select:
 	${troop.name}: ${troop.id}
-	Pv: ${unit.marks[id_pv]}/${unit.initiliazed_mark['PV']}
+	Pv: ${unit.marks[base.id_pv]}/${unit.initiliazed_mark['PV']}
 	Mouvements: ${unit.marks[id_mvt]}/${unit.initiliazed_mark['MVT']}
 	Status: ${unit.marks}
 	Capas: ${app.id_capa_select}/${unit.cast_fn.len}'
@@ -670,12 +670,12 @@ fn (attack Attack) fire(mut app App, effect []int) {
 		if coo_x >= 0 && coo_y >= 0 {
 			for troop in app.world_map[coo_x][coo_y][1..] {
 				if troop is Troops {
-					app.players_units_liste[troop.team_nb][troop.id].damage(effects,
+					app.players_units_liste[troop.team_nb][troop.id].to_do_damage_fn(effects,
 						app)
 				}
 			}
 			if coo_x == app.pos_select_x && coo_y == app.pos_select_y {
-				app.players_units_liste[app.troop_select.team_nb][app.troop_select.id].damage(effects,
+				app.players_units_liste[app.troop_select.team_nb][app.troop_select.id].to_do_damage_fn(effects,
 					app)
 			}
 		}
@@ -730,7 +730,7 @@ fn game_start(mut app Appli) {
 		app.playing = true
 		app.in_waiting_screen = true
 		app.in_placement_turns = true
-		app.player_id_turn = app.player_liste.len - 1
+		app.team_turn = app.player_name_list.len - 1
 	}
 	if mut app is playint.Opt {
 	}
@@ -789,7 +789,7 @@ fn end_turn(mut app Appli) {
 			app.in_selection = false
 		}
 
-		app.rule.all_marks_do_effect(app.player_id_turn)
+		app.rule.all_marks_do_effect(app.team_turn)
 		app.rule.team.update_permanent()
 		
 		app.id_capa_select = -1
