@@ -464,20 +464,18 @@ fn (mut app App) units_interactions(coo_x int, coo_y int) {
 	} else if app.in_selection {
 		if app.id_capa_select == -1 {
 			unit_move(mut app, coo_x, coo_y)
-		} else {
-			if !app.players_units_liste[app.player_id_turn][app.troop_select.id].capa_used {
-				app.players_units_liste[app.player_id_turn][app.troop_select.id].capa_used = true
-				key := app.players_units_liste[app.player_id_turn][app.troop_select.id].capas[app.id_capa_select]
-				app.map_capa_exist[key].use(mut app)
-				app.world_map[app.pos_select_x][app.pos_select_y] << [
-					Troops{
-						color:   app.troop_select.color
-						team_nb: app.troop_select.team_nb
-						id:      app.troop_select.id
-					},
-				]
-				app.check_death()
-			}
+		} else if !app.players_units_liste[app.player_id_turn][app.troop_select.id].capa_used {
+			app.players_units_liste[app.player_id_turn][app.troop_select.id].capa_used = true
+			key := app.players_units_liste[app.player_id_turn][app.troop_select.id].capas[app.id_capa_select]
+			app.map_capa_exist[key].use(mut app)
+			app.world_map[app.pos_select_x][app.pos_select_y] << [
+				Troops{
+					color:   app.troop_select.color
+					team_nb: app.troop_select.team_nb
+					id:      app.troop_select.id
+				},
+			]
+			app.check_death()
 		}
 
 		app.id_capa_select = -1
@@ -723,7 +721,7 @@ mut:
 	shape_type   int @[required]
 
 	effects []int = []int{len: int(Effects.end_effects)} @[required]
-	// it len is the nb of Effects possibles
+	// its len is the nb of Effects possibles
 }
 
 fn (attack Attack) fire(mut app App) {
@@ -934,7 +932,7 @@ fn end_turn(mut app Appli) {
 					color:   app.troop_select.color
 					team_nb: app.troop_select.team_nb
 					id:      app.troop_select.id
-				},
+				}
 			]
 			app.in_selection = false
 		}
