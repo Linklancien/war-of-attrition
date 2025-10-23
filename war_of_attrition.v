@@ -116,6 +116,16 @@ fn on_init(mut app App) {
 	app.rule = base.init_rule_base(app.team_nb, capas.Deck_type.dead_array)
 
 	app.rule.add_mark(Mark_config{
+		name:        'TARGETX'
+		description: 'Used to store a spell target'
+
+		effect: target_effect
+	}, Mark_config{
+		name:        'TARGETY'
+		description: 'Used to store a spell target'
+
+		effect: target_effect
+	},Mark_config{
 		name:        'MVT'
 		description: 'Count by how many the unit have move this turn'
 		effect:      mvt_effect
@@ -662,6 +672,12 @@ fn (troop Troops) stats_render(ctx gg.Context, app App, transparency u8) {
 }
 
 // EFFECTS fn
+
+fn target_effect(id int, mut spells_list []Spell) {
+	for mut spell in spells_list {
+		spell.marks[id] == -1
+	}
+}
 
 fn mvt_effect(id int, mut spells_list []Spell) {
 	for mut spell in spells_list {
