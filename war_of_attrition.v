@@ -24,7 +24,7 @@ mut:
 
 	playing bool
 
-	map_unit_exist map[string]Spell
+	map_unit_exist map[string]capas.Spell_const
 	map_image      map[string]gg.Image
 
 	// for placement turns:
@@ -125,7 +125,7 @@ fn on_init(mut app App) {
 		description: 'Used to store a spell target'
 
 		effect: target_effect
-	},Mark_config{
+	}, Mark_config{
 		name:        'MVT'
 		description: 'Count by how many the unit have move this turn'
 		effect:      mvt_effect
@@ -230,6 +230,7 @@ fn on_resized(e &gg.Event, mut app App) {
 }
 
 // APP INIT: //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// LOAD:
 fn (mut app App) capas_load() {
 	panic('To rework')
 	// entries := os.ls(os.join_path('capas')) or { [] }
@@ -240,10 +241,10 @@ fn (mut app App) capas_load() {
 	// 		println('dir: ${entry}')
 	// 	} else {
 	// 		temp_capas := (os.read_file(path) or { panic('No temp_capas to load') })
-	// 		capa := json.decode(Capas, temp_capas) or {
+	// 		action := json.decode(Actions, temp_capas) or {
 	// 			panic('Failed to decode json, path: ${path}, error: ${err}')
 	// 		}
-	// 		app.map_capa_exist[capa.name] = capa
+	// 		app.map_capa_exist[action.name] = action
 	// 	}
 	// }
 }
@@ -283,6 +284,7 @@ fn (mut app App) images_load() {
 	}
 }
 
+// INIT:
 fn (mut app App) buttons_initialistation() {
 	app.buttons_list << [
 		Button{
@@ -333,7 +335,7 @@ fn (mut app App) actions_initialistation() {
 		}, name[i], key[i])
 	}
 
-	mut capa_name := []string{len: 10, init: 'capa ${index} shortcut'}
+	mut capa_name := []string{len: 10, init: 'action ${index} shortcut'}
 	capa_keys := [int(KeyCode._0), int(KeyCode._1), int(KeyCode._2), int(KeyCode._3), int(KeyCode._4),
 		int(KeyCode._5), int(KeyCode._6), int(KeyCode._7), int(KeyCode._8), int(KeyCode._9)]
 	for i in 0 .. 10 {
@@ -373,7 +375,7 @@ fn waiting_screen_render(app App) {
 		true, true, txt, transparency)
 }
 
-// game fn: ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// In game fn: ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 fn (mut app App) game() {
 	if app.in_waiting_screen {
 		waiting_screen_render(app)
@@ -393,6 +395,7 @@ fn (mut app App) turn() {
 	}
 }
 
+// RENDERING:
 fn game_render(app App) {
 	mut transparency := u8(255)
 	if app.changing_options {
@@ -484,6 +487,7 @@ fn (app App) pv_render(transparency u8) {
 		txt_pv, transparency - 40)
 }
 
+// Logic:
 fn (mut app App) check_placement() {
 	if app.playing && !app.in_waiting_screen && !app.buttons_list[2].check(mut app) {
 		mut coo_x, mut coo_y := hexagons.coo_ortho_to_hexa_x(app.ctx.mouse_pos_x / app.radius,
@@ -590,13 +594,13 @@ fn cam_move(mut app Appli, move_x int, move_y int) {
 	}
 }
 
-fn capa_short_cut(mut app Appli, capa int) {
+fn capa_short_cut(mut app Appli, action int) {
 	if mut app is App {
 		if !app.changing_options {
-			if app.id_capa_select == capa {
+			if app.id_capa_select == action {
 				app.id_capa_select = -1
-			} else if capa < app.rule.team.permanent[app.team_turn][app.troop_select.id].cast_fn.len {
-				app.id_capa_select = capa
+			} else if action < app.rule.team.permanent[app.team_turn][app.troop_select.id].cast_fn.len {
+				app.id_capa_select = action
 			}
 		}
 	}
@@ -659,7 +663,7 @@ fn (troop Troops) stats_render(ctx gg.Context, app App, transparency u8) {
 	Pv: ${unit.marks[base.id_pv]}/${unit.initiliazed_mark['PV']}
 	Mouvements: ${unit.marks[id_mvt]}/${unit.initiliazed_mark['MVT']}
 	Status: ${unit.marks}
-	Capas: ${app.id_capa_select}/${unit.cast_fn.len}'
+	Actions: ${app.id_capa_select}/${unit.cast_fn.len}'
 	if unit.marks[id_action_point] <= 0 {
 		txt += ' \nCapa already used'
 	}
@@ -692,24 +696,37 @@ fn action_points_effect(id int, mut spells_list []Spell) {
 }
 
 // Attack
-struct Capas {
+struct Actions {
 	name string @[required]
 mut:
+	summons []Summon @[required]
 	attacks []Attack @[required]
 }
 
-fn (capa Capas) previsualisation(app App) [][]int {
+fn (action Actions) previsualisation(app App) [][]int {
 	mut concerned := [][]int{}
-	for attack in capa.attacks {
+	for attack in action.attacks {
 		concerned << attack.forme(app)
 	}
 	return concerned
 }
 
-fn (mut capa Capas) use(mut app App) {
-	// 	for attack in capa.attacks {
-	// 		// attack.fire(mut app)
-	// 	}
+fn (mut action Actions) use(mut app App) {
+	for attack in action.attacks {
+		attack.fire(mut app)
+	}
+	for summon in action.summons {
+		summon.invocation(mut app)
+	}
+}
+
+struct Attack {
+	area  int @[required]
+	range int @[required]
+	max_distance int @[required]
+
+	damage       int            @[required]
+	effects_mark map[string]int @[required]
 }
 
 enum Possible_shape {
@@ -720,18 +737,7 @@ enum Possible_shape {
 	ray
 }
 
-struct Attack {
-mut:
-	// shape:
-	max_distance int
-	range        int @[required]
-	shape_type   int @[required]
-
-	function []capas.Spell_fn
-	// it len is the nb of Effects possibles
-}
-
-fn (attack Attack) fire(mut app App, effect []int) {
+fn (attack Attack) fire(mut app App) {
 	concerned := attack.forme(app)
 	for pos in concerned {
 		coo_x := pos[0]
@@ -739,13 +745,17 @@ fn (attack Attack) fire(mut app App, effect []int) {
 		if coo_x >= 0 && coo_y >= 0 {
 			for troop in app.world_map[coo_x][coo_y][1..] {
 				if troop is Troops {
-					// app.rule.team.permanent[troop.team_nb][troop.id].to_do_damage_fn(effects,
-					// 	app)
+					base.inflict_damage(mut app.rule.team.permanent[troop.team_nb][troop.id],
+						attack.damage)
+					base.inflict_effect(mut app.rule.team.permanent[troop.team_nb][troop.id],
+						app.rule, attack.effects_mark)
 				}
 			}
 			if coo_x == app.pos_select_x && coo_y == app.pos_select_y {
-				// app.rule.team.permanent[app.troop_select.team_nb][app.troop_select.id].to_do_damage_fn(effects,
-				// app)
+				base.inflict_damage(mut app.rule.team.permanent[app.troop_select.team_nb][app.troop_select.id],
+					attack.damage)
+				base.inflict_effect(mut app.rule.team.permanent[app.troop_select.team_nb][app.troop_select.id],
+					app.rule, attack.effects_mark)
 			}
 		}
 	}
@@ -766,7 +776,7 @@ fn (attack Attack) forme(app App) [][]int {
 
 	mut concerned := [[coo_x, coo_y]]
 
-	match Possible_shape.from(attack.shape_type) or { panic('') } {
+	match Possible_shape.from(attack.area) or { panic('') } {
 		.zone {
 			distance := hexagons.distance_hexa_x(app.pos_select_x, app.pos_select_y, coo_x,
 				coo_y)
@@ -790,6 +800,15 @@ fn (attack Attack) forme(app App) [][]int {
 			return [][]int{}
 		}
 	}
+}
+
+struct Summon {
+	name string @[required]
+}
+
+fn (summon Summon) invocation(mut app App) {
+	new_spell := app.map_unit_exist[summon.name]
+	app.rule.add_spell(app.troop_select.team_nb, new_spell)
 }
 
 // Buttons: ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
