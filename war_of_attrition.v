@@ -25,8 +25,8 @@ mut:
 	playing bool
 
 	map_action_exist map[string]capas.Spell_fn
-	map_unit_exist map[string]capas.Spell_const
-	map_image      map[string]gg.Image
+	map_unit_exist   map[string]capas.Spell_const
+	map_image        map[string]gg.Image
 
 	// for placement turns:
 	placement_boundaries [][]int
@@ -245,11 +245,11 @@ fn (mut app App) actions_load() {
 				panic('Failed to decode json, path: ${path}, error: ${err}')
 			}
 			app.map_action_exist[action.name] = capas.Spell_fn{
-				name        : action.name
-				description : action.description
-				function    : fn [action](mut spell capas.Spell, mut changed capas.Spell_interface) {
-					if mut changed is App{
-						action.use(mut changed)
+				name:        action.name
+				description: action.description
+				function:    fn [action] (mut spell Spell, mut changed capas.Spell_interface) {
+					if mut changed is App {
+						action.use(mut spell, mut changed)
 					}
 				}
 			}
@@ -559,20 +559,18 @@ fn (mut app App) units_interactions(coo_x int, coo_y int) {
 		if app.id_capa_select == -1 {
 			unit_move(mut app, coo_x, coo_y)
 		} else {
-			if app.rule.team.permanent[app.team_turn][app.troop_select.id].marks[id_action_point] > 0 {
-				app.rule.team.permanent[app.team_turn][app.troop_select.id].marks[id_action_point] -= 1
-				// key := app.rule.team.permanent[app.team_turn][app.troop_select.id].capas[app.id_capa_select]
-				// app.map_action_exist[key].use(mut app)
-				app.world_map[app.pos_select_x][app.pos_select_y] << [
-					Troops{
-						name:    app.troop_select.name
-						color:   app.troop_select.color
-						team_nb: app.troop_select.team_nb
-						id:      app.troop_select.id
-					},
-				]
-				app.rule.team.update_permanent()
-			}
+			app.rule.team.permanent[app.team_turn][app.troop_select.id].cast_fn[app.id_capa_select].function(mut app.rule.team.permanent[app.team_turn][app.troop_select.id], mut
+				app)
+
+			app.world_map[app.pos_select_x][app.pos_select_y] << [
+				Troops{
+					name:    app.troop_select.name
+					color:   app.troop_select.color
+					team_nb: app.troop_select.team_nb
+					id:      app.troop_select.id
+				},
+			]
+			app.rule.team.update_permanent()
 		}
 
 		app.id_capa_select = -1
@@ -705,11 +703,11 @@ fn action_points_effect(id int, mut spells_list []Spell) {
 
 // Attack
 struct Actions {
-	name string @[required]
-	description string @[required]
-mut:
-	summons []Summon @[required]
-	attacks []Attack @[required]
+	name        string   @[required]
+	description string   @[required]
+	cost        int      @[required]
+	summons     []Summon @[required]
+	attacks     []Attack @[required]
 }
 
 fn (action Actions) previsualisation(app App) [][]int {
@@ -720,18 +718,21 @@ fn (action Actions) previsualisation(app App) [][]int {
 	return concerned
 }
 
-fn (action Actions) use(mut app App) {
-	for attack in action.attacks {
-		attack.fire(mut app)
-	}
-	for summon in action.summons {
-		summon.invocation(mut app)
+fn (action Actions) use(mut unit Spell, mut app App) {
+	if unit.marks[id_action_point] >= action.cost {
+		unit.marks[id_action_point] -= action.cost
+		for attack in action.attacks {
+			attack.fire(mut app)
+		}
+		for summon in action.summons {
+			summon.invocation(mut app)
+		}
 	}
 }
 
 struct Attack {
-	area  int @[required]
-	range int @[required]
+	area         int @[required]
+	range        int @[required]
 	max_distance int @[required]
 
 	damage       int            @[required]

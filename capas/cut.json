@@ -1,6 +1,7 @@
 {
     "name": "Cut",
     "description": "Cut description",
+    "cost":        1,
 
     "summons": [{}],
     "attacks": [{
@@ -8,7 +9,7 @@
     "range": 1,
     "max_distance": 1,
 
-    "damage":       1,
-    "effects_mark": {"PV": 1}
+    "damage":       5,
+    "effects_mark": {}
 }]
 }
