@@ -725,7 +725,6 @@ enum Possible_shape {
 
 fn (attack Attack) fire(mut app App) {
 	concerned := attack.forme(app)
-	println('fire')
 	for pos in concerned {
 		coo_x := pos[0]
 		coo_y := pos[1]
