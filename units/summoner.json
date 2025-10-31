@@ -1,0 +1,12 @@
+{
+    "name": "Summoner",
+	"description": "Summoner description",
+
+	"cast_fn":    ["Basic Summon"],
+
+	"initiliazed_mark": {
+        "PV": 10,
+        "MVT": 10,
+        "ACTION POINTS": 1
+    }
+}

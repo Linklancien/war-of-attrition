@@ -1,0 +1,9 @@
+{
+    "name": "Basic Summon",
+    "description": "Basic Summon description",
+    "cost":        1,
+
+    "summons": {
+        "sum_name": "Basic Summoned"
+    }
+}

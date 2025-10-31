@@ -1,0 +1,10 @@
+{
+    "name": "Basic Summoned",
+	"description": "Basic Summoned description",
+
+	"initiliazed_mark": {
+        "PV": 10,
+        "MVT": 10,
+        "ACTION POINTS": 1
+    }
+}

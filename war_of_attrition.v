@@ -364,6 +364,30 @@ fn (mut app App) turn() {
 	}
 }
 
+fn (mut app App) check_dead_troops(){
+	for x in 0..app.world_map.len{
+		for y in 0..app.world_map[x].len{
+			mut new_list := []Hexa_tile{}
+			for i, mut troop in app.world_map[x][y]{
+				if i == 0{
+					new_list << troop
+				}
+				else{
+					match mut troop {
+						Troops {
+							if !app.rule.team.permanent[troop.team_nb][troop.id].is_ended {
+								new_list << troop
+							}
+						}
+						else {}
+					}
+				}
+			}
+			app.world_map[x][y] = new_list
+		}
+	}
+}
+
 // RENDERING:
 fn game_render(app App) {
 	mut transparency := u8(255)
@@ -446,10 +470,12 @@ fn game_render(app App) {
 fn (app App) pv_render(transparency u8) {
 	mut txt_pv := ''
 	for id, unit in app.rule.team.permanent[app.team_turn] {
-		if id == 0 {
-			txt_pv += '${id}: ${unit.marks[base.id_pv]}/${unit.initiliazed_mark['PV']}'
-		} else {
-			txt_pv += '\n${id}: ${unit.marks[base.id_pv]}/${unit.initiliazed_mark['PV']}'
+		if !unit.is_ended{
+			if txt_pv == '' {
+				txt_pv += '${id}: ${unit.marks[base.id_pv]}/${unit.initiliazed_mark['PV']}'
+			} else {
+				txt_pv += '\n${id}: ${unit.marks[base.id_pv]}/${unit.initiliazed_mark['PV']}'
+			}
 		}
 	}
 	playint.text_rect_render(app.ctx, app.text_cfg, 48, app.ctx.height / 2, true, true,
@@ -531,7 +557,6 @@ fn (mut app App) units_interactions(coo_x int, coo_y int) {
 					id:      app.troop_select.id
 				},
 			]
-			app.rule.team.update_permanent()
 		}
 
 		app.id_capa_select = -1
@@ -865,6 +890,7 @@ fn end_turn(mut app Appli) {
 		}
 
 		app.rule.all_marks_do_effect(app.team_turn)
+		app.check_dead_troops()
 		app.rule.team.update_permanent()
 
 		app.id_capa_select = -1
