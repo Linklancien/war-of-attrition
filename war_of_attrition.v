@@ -12,8 +12,11 @@ import linklancien.capas.base
 const bg_color = gg.Color{0, 0, 0, 255}
 const font_path = os.resource_abs_path('FontMono.ttf')
 
-const id_mvt = 7
-const id_action_point = 8
+// Not perfect
+const id_target_x = 6
+const id_target_y = 7
+const id_mvt = 8
+const id_action_point = 9
 
 struct App {
 	playint.Opt
@@ -125,9 +128,9 @@ fn on_init(mut app App) {
 		effect:      action_points_effect
 	})
 
-	for i in 0..2{
-		app.rule.add_spell(i, app.map_unit_exist['Tank'], app.map_unit_exist['Healer'], app.map_unit_exist['Toxic Soldier'],
-			app.map_unit_exist['Grenade Soldier'])
+	for i in 0 .. 2 {
+		app.rule.add_spell(i, app.map_unit_exist['Tank'], app.map_unit_exist['Healer'],
+			app.map_unit_exist['Toxic Soldier'], app.map_unit_exist['Grenade Soldier'])
 		app.rule.draw(i, 4)
 	}
 }
@@ -468,7 +471,7 @@ fn (mut app App) check_placement() {
 				app.world_map[coo_x][coo_y] << [
 					Troops{
 						name:    app.rule.team.hand[app.team_turn][app.rule.team.hand[app.team_turn].len - 1].name
-						color:   gg.Color{125, 125, 125, 255}
+						color:   app.player_color[app.team_turn]
 						team_nb: app.team_turn
 						id:      app.rule.team.next_id(app.team_turn)
 					},
@@ -688,7 +691,7 @@ fn (action Actions) use(mut unit Spell, mut app App) {
 	}
 }
 
-fn (action Actions) get_spell_fn() Spell_fn{
+fn (action Actions) get_spell_fn() Spell_fn {
 	return Spell_fn{
 		name:        action.name
 		description: action.description
@@ -722,6 +725,7 @@ enum Possible_shape {
 
 fn (attack Attack) fire(mut app App) {
 	concerned := attack.forme(app)
+	println('fire')
 	for pos in concerned {
 		coo_x := pos[0]
 		coo_y := pos[1]
