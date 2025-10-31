@@ -3,7 +3,7 @@
     "description": "Basic Summon description",
     "cost":        1,
 
-    "summons": {
+    "summons": [{
         "sum_name": "Basic Summoned"
-    }
+    }]
 }
