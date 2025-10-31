@@ -24,6 +24,7 @@ mut:
 
 	playing bool
 
+	map_action_exist map[string]capas.Spell_fn
 	map_unit_exist map[string]capas.Spell_const
 	map_image      map[string]gg.Image
 
@@ -85,7 +86,7 @@ fn main() {
 	app.player_name_list << ['RED', 'BLUE']
 	app.player_color << [gg.Color{125, 0, 0, 255}, gg.Color{0, 0, 125, 255}]
 
-	// app.capas_load()
+	// app.actions_load()
 	// app.units_load()
 	app.images_load()
 
@@ -231,22 +232,30 @@ fn on_resized(e &gg.Event, mut app App) {
 
 // APP INIT: //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // LOAD:
-fn (mut app App) capas_load() {
+fn (mut app App) actions_load() {
 	panic('To rework')
-	// entries := os.ls(os.join_path('capas')) or { [] }
-	// load capas
-	// for entry in entries {
-	// 	path := os.join_path('capas', entry)
-	// 	if os.is_dir(path) {
-	// 		println('dir: ${entry}')
-	// 	} else {
-	// 		temp_capas := (os.read_file(path) or { panic('No temp_capas to load') })
-	// 		action := json.decode(Actions, temp_capas) or {
-	// 			panic('Failed to decode json, path: ${path}, error: ${err}')
-	// 		}
-	// 		app.map_capa_exist[action.name] = action
-	// 	}
-	// }
+	entries := os.ls(os.join_path('capas')) or { [] }
+	// load actions
+	for entry in entries {
+		path := os.join_path('capas', entry)
+		if os.is_dir(path) {
+			println('dir: ${entry}')
+		} else {
+			temp_action := (os.read_file(path) or { panic('No temp_action to load') })
+			action := json.decode(Actions, temp_action) or {
+				panic('Failed to decode json, path: ${path}, error: ${err}')
+			}
+			app.map_capa_exist[action.name] = capas.Spell_fn{
+				name        : action.name
+				description : action.description
+				function    : fn [action](mut spell capas.Spell, mut changed capas.Spell_interface) {
+					if changed is App{
+						action.use(mut changed)
+					}
+				}
+			}
+		}
+	}
 }
 
 fn (mut app App) units_load() {
@@ -698,6 +707,7 @@ fn action_points_effect(id int, mut spells_list []Spell) {
 // Attack
 struct Actions {
 	name string @[required]
+	description string @[required]
 mut:
 	summons []Summon @[required]
 	attacks []Attack @[required]
