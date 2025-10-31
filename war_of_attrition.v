@@ -6,7 +6,7 @@ import os
 import gg { KeyCode }
 import math.vec { Vec2 }
 import json
-import linklancien.capas {Spell_fn, Mark_config, Rules, Spell, Spell_const, Spell_interface }
+import linklancien.capas { Mark_config, Rules, Spell, Spell_const, Spell_fn, Spell_interface }
 import linklancien.capas.base
 
 const bg_color = gg.Color{0, 0, 0, 255}
@@ -24,8 +24,8 @@ mut:
 
 	playing bool
 
-	map_action_exist map[string]capas.Spell_fn
-	map_unit_exist   map[string]capas.Spell_const
+	map_action_exist map[string]Actions
+	map_unit_exist   map[string]Spell_const
 	map_image        map[string]gg.Image
 
 	// for placement turns:
@@ -90,17 +90,6 @@ fn main() {
 	app.units_load()
 	app.images_load()
 
-	// for p in 0 .. app.player_name_list.len {
-	// 	list_unit := ['Healer', 'Tank', 'Grenade Soldier', 'Toxic Soldier']
-	// 	for next in list_unit {
-	// 		app.rule.team.hand[p] << [app.rule.team.permanent[p].len]
-	// 		app.rule.team.permanent[p] << [
-	// 			app.map_unit_exist[next],
-	// 		]
-	// 		app.rule.team.permanent[p][app.rule.team.permanent[p].len - 1].color = app.player_color[p]
-	// 	}
-	// }
-
 	app.world_map = [][][]Hexa_tile{len: 24, init: [][]Hexa_tile{len: 12, init: []Hexa_tile{len: 1, init: Hexa_tile(Tile{})}}}
 	app.placement_boundaries = [[0, 5, 0, app.world_map[0].len],
 		[app.world_map.len - 5, app.world_map.len, 0, app.world_map[0].len]]
@@ -136,57 +125,11 @@ fn on_init(mut app App) {
 		effect:      action_points_effect
 	})
 
-	app.rule.add_spell(0, capas.Spell_const{
-		name: 'Tank'
-		// cast_fn:          [
-		// 	capas.Spell_fn{
-		// 		name:     'basic attack'
-		// 		function: basic_attack
-		// 	},
-		// ]
-		initiliazed_mark: {
-			'PV': 10
-		}
-	}, capas.Spell_const{
-		name: 'Healer'
-		// cast_fn:          [
-		// 	capas.Spell_fn{
-		// 		name:     'basic attack'
-		// 		function: basic_attack
-		// 	},
-		// ]
-		initiliazed_mark: {
-			'PV': 1
-		}
-	})
-	app.rule.draw(0, 2)
-
-	app.rule.add_spell(1, capas.Spell_const{
-		name: 'Tank'
-		// cast_fn:          [
-		// 	capas.Spell_fn{
-		// 		name:     'basic attack'
-		// 		function: basic_attack
-		// 	},
-		// ]
-		initiliazed_mark: {
-			'PV':  10
-			'MVT': 2
-		}
-	}, capas.Spell_const{
-		name: 'Healer'
-		// cast_fn:          [
-		// 	capas.Spell_fn{
-		// 		name:     'basic attack'
-		// 		function: basic_attack
-		// 	},
-		// ]
-		initiliazed_mark: {
-			'PV':  1
-			'MVT': 2
-		}
-	})
-	app.rule.draw(1, 2)
+	for i in 0..2{
+		app.rule.add_spell(i, app.map_unit_exist['Tank'], app.map_unit_exist['Healer'], app.map_unit_exist['Toxic Soldier'],
+			app.map_unit_exist['Grenade Soldier'])
+		app.rule.draw(i, 4)
+	}
 }
 
 fn on_frame(mut app App) {
@@ -244,18 +187,7 @@ fn (mut app App) actions_load() {
 			action := json.decode(Actions, temp_action) or {
 				panic('Failed to decode json, path: ${path}, error: ${err}, temp_action: ${temp_action}')
 			}
-			app.map_action_exist[action.name] = capas.Spell_fn{
-				name:        action.name
-				description: action.description
-				function:    fn [action] (mut spell Spell, mut changed Spell_interface) {
-					match mut changed {
-						App {
-							action.use(mut spell, mut changed)
-						}
-						else {}
-					}
-				}
-			}
+			app.map_action_exist[action.name] = action
 		}
 	}
 }
@@ -279,7 +211,7 @@ fn (mut app App) units_load() {
 }
 
 struct Saved_units {
-	name string @[required]
+	name        string @[required]
 	description string @[required]
 
 	on_cast_fn string
@@ -289,17 +221,17 @@ struct Saved_units {
 	initiliazed_mark map[string]int @[required]
 }
 
-fn (unit Saved_units) get_spell(app App) Spell_const{
+fn (unit Saved_units) get_spell(app App) Spell_const {
 	return Spell_const{
-		name        : unit.name
-		description : unit.description
+		name:        unit.name
+		description: unit.description
 
-		on_cast_fn : app.map_action_exist[unit.on_cast_fn]
-		cast_fn    : []Spell_fn{len: unit.cast_fn.len, init: app.map_action_exist[unit.cast_fn[index]]}
-		end_fn     : app.map_action_exist[unit.end_fn]
+		on_cast_fn: app.map_action_exist[unit.on_cast_fn].get_spell_fn()
+		cast_fn:    []Spell_fn{len: unit.cast_fn.len, init: app.map_action_exist[unit.cast_fn[index]].get_spell_fn()}
+		end_fn:     app.map_action_exist[unit.end_fn].get_spell_fn()
 
 		initiliazed_mark: unit.initiliazed_mark
-		}
+	}
 }
 
 fn (mut app App) images_load() {
@@ -452,8 +384,8 @@ fn game_render(app App) {
 					coo_y, app.world_map.len + app.dec_x, app.world_map[0].len + app.dec_y)
 			}
 		} else {
-			// key := app.rule.team.permanent[app.team_turn][app.troop_select.id].capas[app.id_capa_select]
-			// path = app.map_action_exist[key].previsualisation(app)
+			key := app.rule.team.permanent[app.team_turn][app.troop_select.id].cast_fn[app.id_capa_select].name
+			path = app.map_action_exist[key].previsualisation(app)
 		}
 	}
 	if app.in_placement_turns {
@@ -752,6 +684,21 @@ fn (action Actions) use(mut unit Spell, mut app App) {
 		}
 		for summon in action.summons {
 			summon.invocation(mut app)
+		}
+	}
+}
+
+fn (action Actions) get_spell_fn() Spell_fn{
+	return Spell_fn{
+		name:        action.name
+		description: action.description
+		function:    fn [action] (mut spell Spell, mut changed Spell_interface) {
+			match mut changed {
+				App {
+					action.use(mut spell, mut changed)
+				}
+				else {}
+			}
 		}
 	}
 }
