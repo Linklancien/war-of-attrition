@@ -87,7 +87,7 @@ fn main() {
 	app.player_color << [gg.Color{125, 0, 0, 255}, gg.Color{0, 0, 125, 255}]
 
 	app.actions_load()
-	// app.units_load()
+	app.units_load()
 	app.images_load()
 
 	// for p in 0 .. app.player_name_list.len {
@@ -261,22 +261,45 @@ fn (mut app App) actions_load() {
 }
 
 fn (mut app App) units_load() {
-	panic('To rework')
-	// entries := os.ls(os.join_path('units')) or { [] }
-	// load units
-	// for entry in entries {
-	// 	path := os.join_path('units', entry)
-	// 	if os.is_dir(path) {
-	// 		println('dir: ${entry}')
-	// 	} else {
-	// 		temp_units := (os.read_file(path) or { panic('No temp_units to load') })
-	// 		unit := json.decode(Units, temp_units) or {
-	// 			panic('Failed to decode json, error: ${err}')
-	// 		}
+	entries := os.ls(os.join_path('units')) or { [] }
+	load units
+	for entry in entries {
+		path := os.join_path('units', entry)
+		if os.is_dir(path) {
+			println('dir: ${entry}')
+		} else {
+			temp_units := (os.read_file(path) or { panic('No temp_units to load') })
+			unit := json.decode(Saved_units, temp_units) or {
+				panic('Failed to decode json, error: ${err}')
+			}
 
-	// 		app.map_unit_exist[unit.name] = unit
-	// 	}
-	// }
+			app.map_unit_exist[unit.name] = unit.get_spell(app)
+		}
+	}
+}
+
+struct Saved_units {
+	name string @[required]
+	description string @[required]
+
+	on_cast_fn string
+	cast_fn    []string
+	end_fn     string
+
+	initiliazed_mark map[string]int @[required]
+}
+
+fn (unit Saved_units) get_spell(app) Spell{
+	return Spell{
+		name        : unit.name
+		description : unit.description
+
+		on_cast_fn : app.map_action_exist[unit.on_cast_fn]
+		cast_fn    : []Spell_fn{len: unit.cast_fn.len, init: app.map_action_exist[unit.cast_fn[index]]}
+		end_fn     : app.map_action_exist[unit.end_fn]
+
+		initiliazed_mark: unit.initiliazed_mark
+		}
 }
 
 fn (mut app App) images_load() {
