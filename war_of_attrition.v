@@ -6,7 +6,7 @@ import os
 import gg { KeyCode }
 import math.vec { Vec2 }
 import json
-import linklancien.capas { Mark_config, Rules, Spell }
+import linklancien.capas { Mark_config, Rules, Spell, Spell_interface }
 import linklancien.capas.base
 
 const bg_color = gg.Color{0, 0, 0, 255}
@@ -242,14 +242,17 @@ fn (mut app App) actions_load() {
 		} else {
 			temp_action := (os.read_file(path) or { panic('No temp_action to load') })
 			action := json.decode(Actions, temp_action) or {
-				panic('Failed to decode json, path: ${path}, error: ${err}')
+				panic('Failed to decode json, path: ${path}, error: ${err}, temp_action: ${temp_action}')
 			}
 			app.map_action_exist[action.name] = capas.Spell_fn{
 				name:        action.name
 				description: action.description
-				function:    fn [action] (mut spell Spell, mut changed capas.Spell_interface) {
-					if mut changed is App {
-						action.use(mut spell, mut changed)
+				function:    fn [action] (mut spell Spell, mut changed Spell_interface) {
+					match mut changed {
+						App {
+							action.use(mut spell, mut changed)
+						}
+						else {}
 					}
 				}
 			}
@@ -703,11 +706,11 @@ fn action_points_effect(id int, mut spells_list []Spell) {
 
 // Attack
 struct Actions {
-	name        string   @[required]
-	description string   @[required]
-	cost        int      @[required]
-	summons     []Summon @[required]
-	attacks     []Attack @[required]
+	name        string @[required]
+	description string @[required]
+	cost        int    @[required]
+	summons     []Summon
+	attacks     []Attack
 }
 
 fn (action Actions) previsualisation(app App) [][]int {
@@ -813,11 +816,11 @@ fn (attack Attack) forme(app App) [][]int {
 }
 
 struct Summon {
-	name string @[required]
+	sum_name string @[required]
 }
 
 fn (summon Summon) invocation(mut app App) {
-	new_spell := app.map_unit_exist[summon.name]
+	new_spell := app.map_unit_exist[summon.sum_name]
 	app.rule.add_spell(app.troop_select.team_nb, new_spell)
 }
 

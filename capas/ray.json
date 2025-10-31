@@ -1,9 +1,14 @@
 {
-"name": "Ray",
-"attacks": [{
-    "range":      5,
-	"shape_type": 2,
-    "effects": [2, 1, 0, 0, -1, 2, 0]
-}
-]
+    "name": "Ray",
+    "description": "Ray description",
+    "cost": 1,
+
+    "attacks": [{
+    "area":  2,
+    "range": 4,
+    "max_distance": 1,
+
+    "damage":       5,
+    "effects_mark": {}
+}]
 }

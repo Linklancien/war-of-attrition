@@ -3,7 +3,6 @@
     "description": "Cut description",
     "cost":        1,
 
-    "summons": [{}],
     "attacks": [{
     "area":  1,
     "range": 1,

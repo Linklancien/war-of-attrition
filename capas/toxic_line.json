@@ -1,9 +1,14 @@
 {
-"name": "Toxic Line",
-"attacks": [{
-    "range":      5,
-	"shape_type": 1,
-    "effects": [4, 0, 0, 0, -1, 1, 0]
-}
-]
+    "name": "Toxic Line",
+    "description": "Toxic Line description",
+    "cost": 1,
+
+    "attacks": [{
+    "area":  1,
+    "range": 5,
+    "max_distance": 1,
+
+    "damage":       3,
+    "effects_mark": {"POISON": 5}
+}]
 }

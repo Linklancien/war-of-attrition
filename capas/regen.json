@@ -1,10 +1,14 @@
 {
-"name": "Regen",
-"attacks": [{
-    "max_distance": 2,
-    "range":      1,
-	"shape_type": 0,
-    "effects": [0, 0, 3, 0, -1, 0, 0]
-}
-]
+    "name": "Regen",
+    "description": "Regen description",
+    "cost": 1,
+
+    "attacks": [{
+    "area":  0,
+    "range": 1,
+    "max_distance": 1,
+
+    "damage":       1,
+    "effects_mark": {"REGEN": 1}
+}]
 }

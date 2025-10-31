@@ -1,9 +1,14 @@
 {
-"name": "Heal",
-"attacks": [{
-    "range":      1,
-	"shape_type": 1,
-    "effects": [0, 0, 0, 0, -1, 0, 5]
-}
-]
+    "name": "Heal",
+    "description": "Heal description",
+    "cost":        1,
+
+    "attacks": [{
+        "area":  1,
+        "range": 1,
+        "max_distance": 1,
+
+        "damage":       0,
+        "effects_mark": {"PV": 5}
+    }]
 }

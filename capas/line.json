@@ -1,9 +1,14 @@
 {
-"name": "Line",
-"attacks": [{
-    "range":      5,
-	"shape_type": 1,
-    "effects": [2, 3, 0, 0, -1, 0, 0]
-}
-]
+    "name": "Line",
+    "description": "Line description",
+    "cost": 1,
+
+    "attacks": [{
+    "area":  1,
+    "range": 5,
+    "max_distance": 1,
+
+    "damage":       4,
+    "effects_mark": {"POISON": 1}
+}]
 }
