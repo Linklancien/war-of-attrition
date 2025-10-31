@@ -6,7 +6,7 @@ import os
 import gg { KeyCode }
 import math.vec { Vec2 }
 import json
-import linklancien.capas { Mark_config, Rules, Spell, Spell_interface }
+import linklancien.capas {Spell_fn, Mark_config, Rules, Spell, Spell_const, Spell_interface }
 import linklancien.capas.base
 
 const bg_color = gg.Color{0, 0, 0, 255}
@@ -262,7 +262,7 @@ fn (mut app App) actions_load() {
 
 fn (mut app App) units_load() {
 	entries := os.ls(os.join_path('units')) or { [] }
-	load units
+	// load units
 	for entry in entries {
 		path := os.join_path('units', entry)
 		if os.is_dir(path) {
@@ -270,7 +270,7 @@ fn (mut app App) units_load() {
 		} else {
 			temp_units := (os.read_file(path) or { panic('No temp_units to load') })
 			unit := json.decode(Saved_units, temp_units) or {
-				panic('Failed to decode json, error: ${err}')
+				panic('Failed to decode json, path: ${path}, error: ${err}, temp_units: ${temp_units}')
 			}
 
 			app.map_unit_exist[unit.name] = unit.get_spell(app)
@@ -289,8 +289,8 @@ struct Saved_units {
 	initiliazed_mark map[string]int @[required]
 }
 
-fn (unit Saved_units) get_spell(app) Spell{
-	return Spell{
+fn (unit Saved_units) get_spell(app App) Spell_const{
+	return Spell_const{
 		name        : unit.name
 		description : unit.description
 

@@ -1,7 +1,11 @@
 {
-"mouvements_max": 10,
-"pv_max": 10,
-"pv": 10,
-"name": "Grenade Soldier",
-"capas": ["Zone"]
+    "name": "Grenade Soldier",
+	"description": "Grenade Soldier description",
+
+	"cast_fn":    ["Zone"],
+
+	"initiliazed_mark": {
+        "PV": 10,
+        "MVT": 10
+    }
 }
