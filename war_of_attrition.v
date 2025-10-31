@@ -5,7 +5,7 @@ import hexagons { Hexa_tile }
 import os
 import gg { KeyCode }
 import math.vec { Vec2 }
-// import json
+import json
 import linklancien.capas { Mark_config, Rules, Spell }
 import linklancien.capas.base
 
@@ -86,7 +86,7 @@ fn main() {
 	app.player_name_list << ['RED', 'BLUE']
 	app.player_color << [gg.Color{125, 0, 0, 255}, gg.Color{0, 0, 125, 255}]
 
-	// app.actions_load()
+	app.actions_load()
 	// app.units_load()
 	app.images_load()
 
@@ -233,7 +233,6 @@ fn on_resized(e &gg.Event, mut app App) {
 // APP INIT: //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // LOAD:
 fn (mut app App) actions_load() {
-	panic('To rework')
 	entries := os.ls(os.join_path('capas')) or { [] }
 	// load actions
 	for entry in entries {
@@ -245,11 +244,11 @@ fn (mut app App) actions_load() {
 			action := json.decode(Actions, temp_action) or {
 				panic('Failed to decode json, path: ${path}, error: ${err}')
 			}
-			app.map_capa_exist[action.name] = capas.Spell_fn{
+			app.map_action_exist[action.name] = capas.Spell_fn{
 				name        : action.name
 				description : action.description
 				function    : fn [action](mut spell capas.Spell, mut changed capas.Spell_interface) {
-					if changed is App{
+					if mut changed is App{
 						action.use(mut changed)
 					}
 				}
@@ -428,7 +427,7 @@ fn game_render(app App) {
 			}
 		} else {
 			// key := app.rule.team.permanent[app.team_turn][app.troop_select.id].capas[app.id_capa_select]
-			// path = app.map_capa_exist[key].previsualisation(app)
+			// path = app.map_action_exist[key].previsualisation(app)
 		}
 	}
 	if app.in_placement_turns {
@@ -563,7 +562,7 @@ fn (mut app App) units_interactions(coo_x int, coo_y int) {
 			if app.rule.team.permanent[app.team_turn][app.troop_select.id].marks[id_action_point] > 0 {
 				app.rule.team.permanent[app.team_turn][app.troop_select.id].marks[id_action_point] -= 1
 				// key := app.rule.team.permanent[app.team_turn][app.troop_select.id].capas[app.id_capa_select]
-				// app.map_capa_exist[key].use(mut app)
+				// app.map_action_exist[key].use(mut app)
 				app.world_map[app.pos_select_x][app.pos_select_y] << [
 					Troops{
 						name:    app.troop_select.name
@@ -721,7 +720,7 @@ fn (action Actions) previsualisation(app App) [][]int {
 	return concerned
 }
 
-fn (mut action Actions) use(mut app App) {
+fn (action Actions) use(mut app App) {
 	for attack in action.attacks {
 		attack.fire(mut app)
 	}

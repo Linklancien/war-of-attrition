@@ -1,9 +1,14 @@
 {
-"name": "Cut",
-"attacks": [{
-    "range":      1,
-	"shape_type": 1,
-    "effects": [0, 0, 0, 0, -1, 10, 0]
-}
-]
+    "name": "Cut",
+    "description": "Cut description",
+
+    "summons": [{}],
+    "attacks": [{
+    "area":  1,
+    "range": 1,
+    "max_distance": 1,
+
+    "damage":       1,
+    "effects_mark": {"PV": 1}
+}]
 }
