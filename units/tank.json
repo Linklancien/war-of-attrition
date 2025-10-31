@@ -1,7 +1,11 @@
 {
-"mouvements_max": 5,
-"pv_max": 15,
-"pv": 15,
-"name": "Tank",
-"capas": ["Cut"]
+    "name": "Tank",
+	"description": "Tank description",
+
+	"cast_fn":    ["Cut"],
+
+	"initiliazed_mark": {
+        "PV": 15,
+        "MVT": 5
+    }
 }

@@ -1,7 +1,11 @@
 {
-"mouvements_max": 10,
-"pv_max": 10,
-"pv": 10,
-"name": "Healer",
-"capas": ["Heal", "Regen"]
+    "name": "Healer",
+	"description": "Healer description",
+
+	"cast_fn":    ["Heal", "Regen"],
+
+	"initiliazed_mark": {
+        "PV": 10,
+        "MVT": 10
+    }
 }

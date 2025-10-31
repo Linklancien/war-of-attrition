@@ -1,7 +1,11 @@
 {
-"mouvements_max": 10,
-"pv_max": 10,
-"pv": 10,
-"name": "Toxic Soldier",
-"capas": ["Toxic Line"]
+    "name": "Toxic Soldier",
+	"description": "Toxic Soldier description",
+
+	"cast_fn":    ["Toxic Line"],
+
+	"initiliazed_mark": {
+        "PV": 10,
+        "MVT": 10
+    }
 }
