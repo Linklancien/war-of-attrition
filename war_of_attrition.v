@@ -129,9 +129,10 @@ fn on_init(mut app App) {
 	})
 
 	for i in 0 .. 2 {
-		app.rule.add_spell(i, app.map_unit_exist["Summoner"])
+		app.rule.add_spell(i, app.map_unit_exist['Summoner'])
 		app.rule.draw(i, 4)
 	}
+	// Need to delet / put in the grave_yard all unit not placed
 }
 
 fn on_frame(mut app App) {
@@ -363,15 +364,14 @@ fn (mut app App) turn() {
 	}
 }
 
-fn (mut app App) check_dead_troops(){
-	for x in 0..app.world_map.len{
-		for y in 0..app.world_map[x].len{
+fn (mut app App) check_dead_troops() {
+	for x in 0 .. app.world_map.len {
+		for y in 0 .. app.world_map[x].len {
 			mut new_list := []Hexa_tile{}
-			for i, mut troop in app.world_map[x][y]{
-				if i == 0{
+			for i, mut troop in app.world_map[x][y] {
+				if i == 0 {
 					new_list << troop
-				}
-				else{
+				} else {
 					match mut troop {
 						Troops {
 							if !app.rule.team.permanent[troop.team_nb][troop.id].is_ended {
@@ -469,7 +469,7 @@ fn game_render(app App) {
 fn (app App) pv_render(transparency u8) {
 	mut txt_pv := ''
 	for id, unit in app.rule.team.permanent[app.team_turn] {
-		if !unit.is_ended{
+		if !unit.is_ended {
 			if txt_pv == '' {
 				txt_pv += '${id}: ${unit.marks[base.id_pv]}/${unit.initiliazed_mark['PV']}'
 			} else {
@@ -820,8 +820,22 @@ struct Summon {
 }
 
 fn (summon Summon) invocation(mut app App) {
-	new_spell := app.map_unit_exist[summon.sum_name]
-	app.rule.add_spell(app.troop_select.team_nb, new_spell)
+	pos := summon.forme(app)
+	assert pos.len == 1, '${pos}'
+	assert pos[0].len == 2, '${pos}'
+	if app.world_map[pos[0][0]][pos[0][1]].len < 2 {
+		new_spell := app.map_unit_exist[summon.sum_name]
+		app.rule.add_spell(app.troop_select.team_nb, new_spell)
+		app.rule.draw(app.troop_select.team_nb, 1)
+		id := app.rule.team.permanent[app.troop_select.team_nb].len
+		app.rule.play_ordered(app.troop_select.team_nb, 1)
+		app.world_map[pos[0][0]][pos[0][1]] << Troops{
+			name:    new_spell.name
+			color:   app.troop_select.color
+			team_nb: app.troop_select.team_nb
+			id:      id
+		}
+	}
 }
 
 fn (summon Summon) forme(app App) [][]int {
@@ -832,9 +846,9 @@ fn (summon Summon) forme(app App) [][]int {
 
 	dir := hexagons.direction_to_pos_x(app.pos_select_x + app.dec_x, app.pos_select_y + app.dec_y,
 		pos_x, pos_y)
-	
-	return hexagons.line_hexa_x(app.pos_select_x, app.pos_select_y, len_x, len_y,
-				dir, 1)
+
+	return hexagons.line_hexa_x(app.pos_select_x, app.pos_select_y, len_x, len_y, dir,
+		1)
 }
 
 // Buttons: ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
