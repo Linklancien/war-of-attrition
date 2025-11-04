@@ -129,8 +129,8 @@ fn on_init(mut app App) {
 	})
 
 	for i in 0 .. 2 {
-		app.rule.add_spell(i, app.map_unit_exist['Summoner'])
-		app.rule.draw(i, 4)
+		app.rule.add_spell(i,app.map_unit_exist['Tank'], app.map_unit_exist['Healer'], app.map_unit_exist['Toxic Soldier'], app.map_unit_exist['Grenade Soldier'], app.map_unit_exist['Summoner'])
+		app.rule.draw(i, 5)
 	}
 	// Need to delet / put in the grave_yard all unit not placed
 }
@@ -556,6 +556,10 @@ fn (mut app App) units_interactions(coo_x int, coo_y int) {
 					id:      app.troop_select.id
 				},
 			]
+			for team_turn in 0..app.team_nb{
+				app.rule.marks_list[base.id_pv].do_effect(mut app.rule.team.permanent[team_turn])
+			}
+			app.check_dead_troops()
 		}
 
 		app.id_capa_select = -1
