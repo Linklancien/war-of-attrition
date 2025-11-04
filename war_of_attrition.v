@@ -44,7 +44,7 @@ mut:
 	// interface Turn_based_rules:
 	rule      Rules
 	team_turn int
-	team_nb   int = 2
+	player_nb   int = 2
 
 	radius f32 = 30
 	dec_x  int = 2
@@ -106,7 +106,7 @@ fn main() {
 fn on_init(mut app App) {
 	app.buttons_initialistation()
 	app.actions_initialistation()
-	app.rule = base.init_rule_base(app.team_nb, capas.Deck_type.dead_array)
+	app.rule = base.init_rule_base(app.player_nb, capas.Deck_type.dead_array)
 
 	app.rule.add_mark(Mark_config{
 		name:        'TARGETX'
@@ -149,6 +149,7 @@ fn on_frame(mut app App) {
 }
 
 fn on_event(e &gg.Event, mut app App) {
+	// for playint
 	app.on_event(e, mut app)
 }
 
@@ -410,8 +411,10 @@ fn game_render(app App) {
 					coo_y, app.world_map.len + app.dec_x, app.world_map[0].len + app.dec_y)
 			}
 		} else {
-			key := app.rule.team.permanent[app.troop_select.team_nb][app.troop_select.id].cast_fn[app.id_capa_select].name
-			path = app.map_action_exist[key].previsualisation(app)
+			if app.team_turn == app.troop_select.team_nb{
+				key := app.rule.team.permanent[app.troop_select.team_nb][app.troop_select.id].cast_fn[app.id_capa_select].name
+				path = app.map_action_exist[key].previsualisation(app)
+			}
 		}
 	}
 	if app.in_placement_turns {
@@ -556,7 +559,7 @@ fn (mut app App) units_interactions(coo_x int, coo_y int) {
 					id:      app.troop_select.id
 				},
 			]
-			for team_turn in 0..app.team_nb{
+			for team_turn in 0..app.player_nb{
 				app.rule.marks_list[base.id_pv].do_effect(mut app.rule.team.permanent[team_turn])
 			}
 			app.check_dead_troops()
