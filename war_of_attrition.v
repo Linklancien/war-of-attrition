@@ -232,7 +232,6 @@ struct Saved_units {
 }
 
 fn (unit Saved_units) get_spell(app App) Spell_const {
-	// panic(app.map_action_exist)
 	return Spell_const{
 		name:        unit.name
 		description: unit.description
