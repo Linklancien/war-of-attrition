@@ -2,7 +2,7 @@
     "name": "Toxic Soldier",
 	"description": "Toxic Soldier description",
 
-	"cast_fn":    ["Toxic Line"],
+	"cast_fn":    ["MVT", "Toxic Line"],
 
 	"initiliazed_mark": {
         "PV": 10,

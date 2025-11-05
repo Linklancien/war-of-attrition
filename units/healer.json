@@ -2,7 +2,7 @@
     "name": "Healer",
 	"description": "Healer description",
 
-	"cast_fn":    ["Heal", "Regen"],
+	"cast_fn":    ["MVT", "Heal", "Regen"],
 
 	"initiliazed_mark": {
         "PV": 10,

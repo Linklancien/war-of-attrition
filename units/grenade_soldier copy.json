@@ -2,7 +2,7 @@
     "name": "Grenade Soldier",
 	"description": "Grenade Soldier description",
 
-	"cast_fn":    ["Zone"],
+	"cast_fn":    ["MVT", "Zone"],
 
 	"initiliazed_mark": {
         "PV": 10,

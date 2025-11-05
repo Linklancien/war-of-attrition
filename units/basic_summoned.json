@@ -2,6 +2,8 @@
     "name": "Basic Summoned",
 	"description": "Basic Summoned description",
 
+    "cast_fn":    ["MVT"],
+
 	"initiliazed_mark": {
         "PV": 10,
         "MVT": 10,

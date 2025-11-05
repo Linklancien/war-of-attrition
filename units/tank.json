@@ -2,7 +2,7 @@
     "name": "Tank",
 	"description": "Tank description",
 
-	"cast_fn":    ["Cut"],
+	"cast_fn":    ["MVT", "Cut"],
 
 	"initiliazed_mark": {
         "PV": 15,

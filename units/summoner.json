@@ -2,7 +2,7 @@
     "name": "Summoner",
 	"description": "Summoner description",
 
-	"cast_fn":    ["Basic Summon"],
+	"cast_fn":    ["MVT", "Basic Summon"],
 
 	"initiliazed_mark": {
         "PV": 10,
