@@ -397,6 +397,7 @@ fn game_render(app App) {
 	mut path := [][]int{}
 	if app.in_selection {
 		if app.id_capa_select == -1 {
+			// Mvt previsualisation
 			mut coo_x, mut coo_y := hexagons.coo_ortho_to_hexa_x(app.ctx.mouse_pos_x / app.radius,
 				app.ctx.mouse_pos_y / app.radius, app.world_map.len + app.dec_x,
 				app.world_map[0].len + app.dec_y)
@@ -460,12 +461,6 @@ fn game_render(app App) {
 		txt_nb := 'UNITS TO PLACE: ${len}'
 		playint.text_rect_render(app.ctx, app.text_cfg, app.ctx.width - 128, 32, true,
 			true, txt_nb, transparency)
-
-		if len > 0 {
-			// unit_id := app.rule.team.hand[team][len - 1]
-			// app.rule.team.permanent[team][unit_id].stats_render(app.ctx, app,
-			// 	transparency)
-		}
 	}
 }
 
@@ -533,6 +528,7 @@ fn (mut app App) check_unit_interaction() {
 
 fn (mut app App) units_interactions(coo_x int, coo_y int) {
 	if !app.in_selection && app.world_map[coo_x][coo_y].len > 1 {
+		// selection of troop if possible
 		tempo := app.world_map[coo_x][coo_y].pop()
 		if tempo is Troops {
 			app.troop_select = tempo
@@ -545,6 +541,7 @@ fn (mut app App) units_interactions(coo_x int, coo_y int) {
 			app.world_map[coo_x][coo_y] << [tempo]
 		}
 	} else if app.in_selection {
+		// use a unit Action
 		if app.id_capa_select == -1 {
 			unit_move(mut app, coo_x, coo_y)
 		} else {
