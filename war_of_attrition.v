@@ -18,6 +18,8 @@ const id_target_y = 7
 const id_mvt = 8
 const id_action_point = 9
 
+const idle_capa_select = 0
+
 struct App {
 	playint.Opt
 mut:
@@ -60,7 +62,7 @@ mut:
 	pos_select_x   int
 	pos_select_y   int
 	troop_select   Troops
-	id_capa_select int = -1
+	id_capa_select int = idle_capa_select
 }
 
 struct Tile {
@@ -235,9 +237,9 @@ fn (unit Saved_units) get_spell(app App) Spell_const {
 		name:        unit.name
 		description: unit.description
 
-		on_cast_fn: app.map_action_exist[unit.on_cast_fn].get_spell_fn()
+		// on_cast_fn: app.map_action_exist[unit.on_cast_fn].get_spell_fn()
 		cast_fn:    []Spell_fn{len: unit.cast_fn.len, init: app.map_action_exist[unit.cast_fn[index]].get_spell_fn()}
-		end_fn:     app.map_action_exist[unit.end_fn].get_spell_fn()
+		// end_fn:     app.map_action_exist[unit.end_fn].get_spell_fn()
 
 		initiliazed_mark: unit.initiliazed_mark
 	}
@@ -522,7 +524,7 @@ fn (mut app App) units_interactions(coo_x int, coo_y int) {
 		// use a unit Action
 		app.rule.team.permanent[app.troop_select.team_nb][app.troop_select.id].cast_fn[app.id_capa_select].function(mut app.rule.team.permanent[app.troop_select.team_nb][app.troop_select.id], mut
 			app)
-
+		
 		app.world_map[app.pos_select_x][app.pos_select_y] << [
 			Troops{
 				name:    app.troop_select.name
@@ -531,13 +533,13 @@ fn (mut app App) units_interactions(coo_x int, coo_y int) {
 				id:      app.troop_select.id
 			},
 		]
+		app.id_capa_select = idle_capa_select
+		app.in_selection = false
+
 		for team_turn in 0 .. app.player_nb {
 			app.rule.marks_list[base.id_pv].do_effect(mut app.rule.team.permanent[team_turn])
 		}
 		app.check_dead_troops()
-
-		app.id_capa_select = -1
-		app.in_selection = false
 	}
 }
 
@@ -555,7 +557,7 @@ fn capa_short_cut(mut app Appli, action int) {
 	if mut app is App {
 		if !app.changing_options {
 			if app.id_capa_select == action {
-				app.id_capa_select = -1
+				app.id_capa_select = idle_capa_select
 			} else if action < app.rule.team.permanent[app.troop_select.team_nb][app.troop_select.id].cast_fn.len {
 				app.id_capa_select = action
 			}
@@ -868,10 +870,9 @@ fn unit_move(mut app App) {
 	distance := hexagons.distance_hexa_x(app.pos_select_x, app.pos_select_y, coo_x, coo_y)
 	tempo := app.troop_select
 	if tempo.team_nb == app.team_turn && app.world_map[coo_x][coo_y].len < 2 && distance <= mvt {
-		app.world_map[coo_x][coo_y] << tempo
+		app.pos_select_x = coo_x
+		app.pos_select_y = coo_y
 		app.rule.team.permanent[app.team_turn][tempo.id].marks[id_mvt] -= distance
-	} else {
-		app.world_map[app.pos_select_x][app.pos_select_y] << tempo
 	}
 }
 
@@ -946,7 +947,7 @@ fn end_turn(mut app Appli) {
 		app.check_dead_troops()
 		app.rule.team.update_permanent()
 
-		app.id_capa_select = -1
+		app.id_capa_select = idle_capa_select
 		app.in_waiting_screen = true
 	}
 }
