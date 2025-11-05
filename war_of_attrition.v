@@ -27,7 +27,9 @@ mut:
 
 	playing bool
 
-	map_action_exist map[string]Actions
+	map_action_exist map[string]Hability = {
+		'MVT': Mvt{}
+	}
 	map_unit_exist   map[string]Spell_const
 	map_image        map[string]gg.Image
 
@@ -44,7 +46,7 @@ mut:
 	// interface Turn_based_rules:
 	rule      Rules
 	team_turn int
-	player_nb   int = 2
+	player_nb int = 2
 
 	radius f32 = 30
 	dec_x  int = 2
@@ -129,7 +131,9 @@ fn on_init(mut app App) {
 	})
 
 	for i in 0 .. 2 {
-		app.rule.add_spell(i,app.map_unit_exist['Tank'], app.map_unit_exist['Healer'], app.map_unit_exist['Toxic Soldier'], app.map_unit_exist['Grenade Soldier'], app.map_unit_exist['Summoner'])
+		app.rule.add_spell(i, app.map_unit_exist['Tank'], app.map_unit_exist['Healer'],
+			app.map_unit_exist['Toxic Soldier'], app.map_unit_exist['Grenade Soldier'],
+			app.map_unit_exist['Summoner'])
 		app.rule.draw(i, 5)
 	}
 	// Need to delet / put in the grave_yard all unit not placed
@@ -226,6 +230,7 @@ struct Saved_units {
 }
 
 fn (unit Saved_units) get_spell(app App) Spell_const {
+	// panic(app.map_action_exist)
 	return Spell_const{
 		name:        unit.name
 		description: unit.description
@@ -295,11 +300,11 @@ fn (mut app App) actions_initialistation() {
 	app.new_action(next_state, 'game start', int(KeyCode.enter))
 
 	name := ['camera up', 'camera down', 'camera right', 'camera left']
-	mvt := [[0, 2], [0, -2], [-2, 0], [2, 0]]
+	deplacement := [[0, 2], [0, -2], [-2, 0], [2, 0]]
 	key := [int(KeyCode.up), int(KeyCode.down), int(KeyCode.right), int(KeyCode.left)]
 	for i in 0 .. 4 {
-		move_x := mvt[i][0]
-		move_y := mvt[i][1]
+		move_x := deplacement[i][0]
+		move_y := deplacement[i][1]
 		app.new_action(fn [move_x, move_y] (mut app Appli) {
 			cam_move(mut app, move_x, move_y)
 		}, name[i], key[i])
@@ -388,6 +393,13 @@ fn (mut app App) check_dead_troops() {
 	}
 }
 
+fn (app App) get_mouse_pos_hexa() (int, int){
+	coo_x, coo_y := hexagons.coo_ortho_to_hexa_x(app.ctx.mouse_pos_x / app.radius,
+		app.ctx.mouse_pos_y / app.radius, app.world_map.len + app.dec_x, app.world_map[0].len +
+		app.dec_y)
+	return coo_x - app.dec_x, coo_y - app.dec_y
+}
+
 // RENDERING:
 fn game_render(app App) {
 	mut transparency := u8(255)
@@ -395,36 +407,12 @@ fn game_render(app App) {
 		transparency = 150
 	}
 	mut path := [][]int{}
-	if app.in_selection {
-		if app.id_capa_select == -1 {
-			// Mvt previsualisation
-			mut coo_x, mut coo_y := hexagons.coo_ortho_to_hexa_x(app.ctx.mouse_pos_x / app.radius,
-				app.ctx.mouse_pos_y / app.radius, app.world_map.len + app.dec_x,
-				app.world_map[0].len + app.dec_y)
-
-			coo_x -= app.dec_x
-			coo_y -= app.dec_y
-			distance := hexagons.distance_hexa_x(app.pos_select_x, app.pos_select_y, coo_x,
-				coo_y)
-			mvt := app.rule.team.permanent[app.troop_select.team_nb][app.troop_select.id].marks[id_mvt]
-			if coo_x != -1 && coo_y != -1 && distance <= mvt {
-				path = hexagons.path_to_hexa_x(app.pos_select_x, app.pos_select_y, coo_x,
-					coo_y, app.world_map.len + app.dec_x, app.world_map[0].len + app.dec_y)
-			}
-		} else {
-			if app.team_turn == app.troop_select.team_nb{
-				key := app.rule.team.permanent[app.troop_select.team_nb][app.troop_select.id].cast_fn[app.id_capa_select].name
-				path = app.map_action_exist[key].previsualisation(app)
-			}
-		}
+	if app.in_selection && app.team_turn == app.troop_select.team_nb {
+		key := app.rule.team.permanent[app.troop_select.team_nb][app.troop_select.id].cast_fn[app.id_capa_select].name
+		path = app.map_action_exist[key].previsualisation(app)
 	}
 	if app.in_placement_turns {
-		mut coo_x, mut coo_y := hexagons.coo_ortho_to_hexa_x(app.ctx.mouse_pos_x / app.radius,
-			app.ctx.mouse_pos_y / app.radius, app.world_map.len + app.dec_x, app.world_map[0].len +
-			app.dec_y)
-
-		coo_x -= app.dec_x
-		coo_y -= app.dec_y
+		coo_x, coo_y := app.get_mouse_pos_hexa()
 
 		if app.check_placement_possible(coo_x, coo_y) {
 			path << [coo_x, coo_y]
@@ -482,12 +470,7 @@ fn (app App) pv_render(transparency u8) {
 // Logic:
 fn (mut app App) check_placement() {
 	if app.playing && !app.in_waiting_screen && !app.buttons_list[2].check(mut app) {
-		mut coo_x, mut coo_y := hexagons.coo_ortho_to_hexa_x(app.ctx.mouse_pos_x / app.radius,
-			app.ctx.mouse_pos_y / app.radius, app.world_map.len + app.dec_x, app.world_map[0].len +
-			app.dec_y)
-
-		coo_x -= app.dec_x
-		coo_y -= app.dec_y
+		coo_x, coo_y := app.get_mouse_pos_hexa()
 
 		if coo_x >= 0 && coo_y >= 0 && app.check_placement_possible(coo_x, coo_y) {
 			if app.rule.team.hand[app.team_turn].len > 0 && app.world_map[coo_x][coo_y].len < 2 {
@@ -513,12 +496,7 @@ fn (app App) check_placement_possible(coo_x int, coo_y int) bool {
 
 fn (mut app App) check_unit_interaction() {
 	if app.playing && !app.in_waiting_screen {
-		mut coo_x, mut coo_y := hexagons.coo_ortho_to_hexa_x(app.ctx.mouse_pos_x / app.radius,
-			app.ctx.mouse_pos_y / app.radius, app.world_map.len + app.dec_x, app.world_map[0].len +
-			app.dec_y)
-
-		coo_x -= app.dec_x
-		coo_y -= app.dec_y
+		coo_x, coo_y := app.get_mouse_pos_hexa()
 
 		if coo_x >= 0 && coo_y >= 0 {
 			app.units_interactions(coo_x, coo_y)
@@ -542,40 +520,24 @@ fn (mut app App) units_interactions(coo_x int, coo_y int) {
 		}
 	} else if app.in_selection {
 		// use a unit Action
-		if app.id_capa_select == -1 {
-			unit_move(mut app, coo_x, coo_y)
-		} else {
-			app.rule.team.permanent[app.troop_select.team_nb][app.troop_select.id].cast_fn[app.id_capa_select].function(mut app.rule.team.permanent[app.troop_select.team_nb][app.troop_select.id], mut
-				app)
+		app.rule.team.permanent[app.troop_select.team_nb][app.troop_select.id].cast_fn[app.id_capa_select].function(mut app.rule.team.permanent[app.troop_select.team_nb][app.troop_select.id], mut
+			app)
 
-			app.world_map[app.pos_select_x][app.pos_select_y] << [
-				Troops{
-					name:    app.troop_select.name
-					color:   app.troop_select.color
-					team_nb: app.troop_select.team_nb
-					id:      app.troop_select.id
-				},
-			]
-			for team_turn in 0..app.player_nb{
-				app.rule.marks_list[base.id_pv].do_effect(mut app.rule.team.permanent[team_turn])
-			}
-			app.check_dead_troops()
+		app.world_map[app.pos_select_x][app.pos_select_y] << [
+			Troops{
+				name:    app.troop_select.name
+				color:   app.troop_select.color
+				team_nb: app.troop_select.team_nb
+				id:      app.troop_select.id
+			},
+		]
+		for team_turn in 0 .. app.player_nb {
+			app.rule.marks_list[base.id_pv].do_effect(mut app.rule.team.permanent[team_turn])
 		}
+		app.check_dead_troops()
 
 		app.id_capa_select = -1
 		app.in_selection = false
-	}
-}
-
-fn unit_move(mut app App, coo_x int, coo_y int) {
-	mvt := app.rule.team.permanent[app.troop_select.team_nb][app.troop_select.id].marks[id_mvt]
-	distance := hexagons.distance_hexa_x(app.pos_select_x, app.pos_select_y, coo_x, coo_y)
-	tempo := app.troop_select
-	if tempo.team_nb == app.team_turn && app.world_map[coo_x][coo_y].len < 2 && distance <= mvt {
-		app.world_map[coo_x][coo_y] << tempo
-		app.rule.team.permanent[app.team_turn][tempo.id].marks[id_mvt] -= distance
-	} else {
-		app.world_map[app.pos_select_x][app.pos_select_y] << tempo
 	}
 }
 
@@ -690,7 +652,16 @@ fn action_points_effect(id int, mut spells_list []Spell) {
 	}
 }
 
-// Attack
+interface Hability {
+	name        string
+	description string
+
+	get_spell_fn() Spell_fn
+	previsualisation(app App) [][]int
+	use(mut unit Spell, mut app App)
+}
+
+// Actions
 struct Actions {
 	name        string @[required]
 	description string @[required]
@@ -784,12 +755,12 @@ fn (attack Attack) forme(app App) [][]int {
 	pos_x := app.ctx.mouse_pos_x / app.radius
 	pos_y := app.ctx.mouse_pos_y / app.radius
 	mut coo_x, mut coo_y := hexagons.coo_ortho_to_hexa_x(pos_x, pos_y, len_x, len_y)
+	coo_x -= app.dec_x
+	coo_y -= app.dec_y
 
 	dir := hexagons.direction_to_pos_x(app.pos_select_x + app.dec_x, app.pos_select_y + app.dec_y,
 		pos_x, pos_y)
 
-	coo_x -= app.dec_x
-	coo_y -= app.dec_y
 
 	mut concerned := [[coo_x, coo_y]]
 
@@ -853,6 +824,55 @@ fn (summon Summon) forme(app App) [][]int {
 
 	return hexagons.line_hexa_x(app.pos_select_x, app.pos_select_y, len_x, len_y, dir,
 		1)
+}
+
+// MVT
+struct Mvt {
+	name        string = 'MVT'
+	description string = 'Mvt description'
+}
+
+fn (mvt Mvt) get_spell_fn() Spell_fn {
+	return Spell_fn{
+		name:        mvt.name
+		description: mvt.description
+		function:    fn [mvt] (mut spell Spell, mut changed Spell_interface) {
+			match mut changed {
+				App {
+					mvt.use(mut spell, mut changed)
+				}
+				else {}
+			}
+		}
+	}
+}
+
+fn (_ Mvt) previsualisation(app App) [][]int {
+	coo_x, coo_y := app.get_mouse_pos_hexa()
+	distance := hexagons.distance_hexa_x(app.pos_select_x, app.pos_select_y, coo_x, coo_y)
+	mvt := app.rule.team.permanent[app.troop_select.team_nb][app.troop_select.id].marks[id_mvt]
+	if coo_x != -1 && coo_y != -1 && distance <= mvt {
+		return hexagons.path_to_hexa_x(app.pos_select_x, app.pos_select_y, coo_x, coo_y,
+			app.world_map.len + app.dec_x, app.world_map[0].len + app.dec_y)
+	}
+	return [][]int{}
+}
+
+fn (mvt Mvt) use(mut unit Spell, mut app App) {
+	unit_move(mut app)
+}
+
+fn unit_move(mut app App) {
+	coo_x, coo_y := app.get_mouse_pos_hexa()
+	mvt := app.rule.team.permanent[app.troop_select.team_nb][app.troop_select.id].marks[id_mvt]
+	distance := hexagons.distance_hexa_x(app.pos_select_x, app.pos_select_y, coo_x, coo_y)
+	tempo := app.troop_select
+	if tempo.team_nb == app.team_turn && app.world_map[coo_x][coo_y].len < 2 && distance <= mvt {
+		app.world_map[coo_x][coo_y] << tempo
+		app.rule.team.permanent[app.team_turn][tempo.id].marks[id_mvt] -= distance
+	} else {
+		app.world_map[app.pos_select_x][app.pos_select_y] << tempo
+	}
 }
 
 // Buttons: ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
