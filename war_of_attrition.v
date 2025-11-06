@@ -404,8 +404,10 @@ fn game_render(app App) {
 	}
 	mut path := [][]int{}
 	if app.in_selection && app.team_turn == app.troop_select.team_nb {
-		key := app.rule.team.permanent[app.troop_select.team_nb][app.troop_select.id].cast_fn[app.id_capa_select].name
-		path = app.map_action_exist[key].previsualisation(app)
+		action := app.rule.team.permanent[app.troop_select.team_nb][app.troop_select.id].cast_fn[app.id_capa_select]
+		if action != capas.null_spell_fn{
+			path = app.map_action_exist[action.name].previsualisation(app)
+		}
 	}
 	if app.in_placement_turns {
 		coo_x, coo_y := app.get_mouse_pos_hexa()

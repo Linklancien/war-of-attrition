@@ -2,7 +2,7 @@
     "name": "Basic Summoned",
 	"description": "Basic Summoned description",
 
-    "cast_fn":    ["MVT"],
+    "cast_fn":    ["MVT", "Cut"],
 
 	"initiliazed_mark": {
         "PV": 10,
