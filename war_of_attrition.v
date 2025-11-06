@@ -13,10 +13,8 @@ const bg_color = gg.Color{0, 0, 0, 255}
 const font_path = os.resource_abs_path('FontMono.ttf')
 
 // Not perfect
-const id_target_x = 6
-const id_target_y = 7
-const id_mvt = 8
-const id_action_point = 9
+const id_mvt = 6
+const id_action_point = 7
 
 const idle_capa_select = 0
 
@@ -113,16 +111,6 @@ fn on_init(mut app App) {
 	app.rule = base.init_rule_base(app.player_nb, capas.Deck_type.dead_array)
 
 	app.rule.add_mark(Mark_config{
-		name:        'TARGETX'
-		description: 'Used to store a spell target'
-
-		effect: target_effect
-	}, Mark_config{
-		name:        'TARGETY'
-		description: 'Used to store a spell target'
-
-		effect: target_effect
-	}, Mark_config{
 		name:        'MVT'
 		description: 'Count by how many the unit have move this turn'
 		effect:      mvt_effect
@@ -236,12 +224,20 @@ fn (unit Saved_units) get_spell(app App) Spell_const {
 		name:        unit.name
 		description: unit.description
 
-		// on_cast_fn: app.map_action_exist[unit.on_cast_fn].get_spell_fn()
-		cast_fn:    []Spell_fn{len: unit.cast_fn.len, init: app.map_action_exist[unit.cast_fn[index]].get_spell_fn()}
-		// end_fn:     app.map_action_exist[unit.end_fn].get_spell_fn()
+		on_cast_fn: spell_fn_exist(unit.on_cast_fn, app)
+		cast_fn:    []Spell_fn{len: unit.cast_fn.len, init: spell_fn_exist(unit.cast_fn[index],
+			app)}
+		end_fn:     spell_fn_exist(unit.end_fn, app)
 
 		initiliazed_mark: unit.initiliazed_mark
 	}
+}
+
+fn spell_fn_exist(key string, app App) Spell_fn {
+	if key in app.map_action_exist.keys() {
+		return app.map_action_exist[key].get_spell_fn()
+	}
+	return capas.null_spell_fn
 }
 
 fn (mut app App) images_load() {
@@ -394,10 +390,9 @@ fn (mut app App) check_dead_troops() {
 	}
 }
 
-fn (app App) get_mouse_pos_hexa() (int, int){
-	coo_x, coo_y := hexagons.coo_ortho_to_hexa_x(app.ctx.mouse_pos_x / app.radius,
-		app.ctx.mouse_pos_y / app.radius, app.world_map.len + app.dec_x, app.world_map[0].len +
-		app.dec_y)
+fn (app App) get_mouse_pos_hexa() (int, int) {
+	coo_x, coo_y := hexagons.coo_ortho_to_hexa_x(app.ctx.mouse_pos_x / app.radius, app.ctx.mouse_pos_y / app.radius,
+		app.world_map.len + app.dec_x, app.world_map[0].len + app.dec_y)
 	return coo_x - app.dec_x, coo_y - app.dec_y
 }
 
@@ -523,7 +518,7 @@ fn (mut app App) units_interactions(coo_x int, coo_y int) {
 		// use a unit Action
 		app.rule.team.permanent[app.troop_select.team_nb][app.troop_select.id].cast_fn[app.id_capa_select].function(mut app.rule.team.permanent[app.troop_select.team_nb][app.troop_select.id], mut
 			app)
-		
+
 		app.world_map[app.pos_select_x][app.pos_select_y] << [
 			Troops{
 				name:    app.troop_select.name
@@ -535,8 +530,9 @@ fn (mut app App) units_interactions(coo_x int, coo_y int) {
 		app.id_capa_select = idle_capa_select
 		app.in_selection = false
 
-		for team_turn in 0 .. app.player_nb {
-			app.rule.marks_list[base.id_pv].do_effect(mut app.rule.team.permanent[team_turn])
+		for team in 0 .. app.player_nb {
+			println(app.rule.team.permanent[team])
+			app.rule.marks_list[base.id_pv].do_effect(mut app.rule.team.permanent[team])
 		}
 		app.check_dead_troops()
 	}
@@ -621,7 +617,7 @@ fn (troop Troops) stats_render(ctx gg.Context, app App, transparency u8) {
 	Pv: ${unit.marks[base.id_pv]}/${unit.initiliazed_mark['PV']}
 	Mouvements: ${unit.marks[id_mvt]}/${unit.initiliazed_mark['MVT']}
 	Status: ${unit.marks}
-	Actions: ${app.id_capa_select}/${unit.cast_fn.len}'
+	Actions: ${app.id_capa_select}/${unit.cast_fn.len - 1}'
 	if unit.marks[id_action_point] <= 0 {
 		txt += ' \nCapa already used'
 	}
@@ -634,22 +630,19 @@ fn (troop Troops) stats_render(ctx gg.Context, app App, transparency u8) {
 }
 
 // EFFECTS fn
-
-fn target_effect(id int, mut spells_list []Spell) {
-	for mut spell in spells_list {
-		spell.marks[id] == -1
-	}
-}
-
 fn mvt_effect(id int, mut spells_list []Spell) {
 	for mut spell in spells_list {
-		spell.marks[id] = spell.initiliazed_mark['MVT']
+		if !spell.is_ended {
+			spell.marks[id] = spell.initiliazed_mark['MVT']
+		}
 	}
 }
 
 fn action_points_effect(id int, mut spells_list []Spell) {
 	for mut spell in spells_list {
-		spell.marks[id] = spell.initiliazed_mark['ACTION POINTS']
+		if !spell.is_ended {
+			spell.marks[id] = spell.initiliazed_mark['ACTION POINTS']
+		}
 	}
 }
 
@@ -761,7 +754,6 @@ fn (attack Attack) forme(app App) [][]int {
 
 	dir := hexagons.direction_to_pos_x(app.pos_select_x + app.dec_x, app.pos_select_y + app.dec_y,
 		pos_x, pos_y)
-
 
 	mut concerned := [[coo_x, coo_y]]
 
