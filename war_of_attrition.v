@@ -466,6 +466,35 @@ fn (app App) pv_render(transparency u8) {
 }
 
 // Logic:
+fn (app App) get_mouse_pos_hexa() (int, int) {
+	coo_x, coo_y := hexagons.coo_ortho_to_hexa_x(app.ctx.mouse_pos_x / app.radius, app.ctx.mouse_pos_y / app.radius,
+		app.world_map.len + app.dec_x, app.world_map[0].len + app.dec_y)
+	return coo_x - app.dec_x, coo_y - app.dec_y
+}
+
+// actions for the player
+fn cam_move(mut app Appli, move_x int, move_y int) {
+	if mut app is App {
+		if !app.changing_options {
+			app.dec_x += move_x
+			app.dec_y += move_y
+		}
+	}
+}
+
+fn capa_short_cut(mut app Appli, action int) {
+	if mut app is App {
+		if !app.changing_options {
+			if app.id_capa_select == action {
+				app.id_capa_select = idle_capa_select
+			} else if action < app.rule.team.permanent[app.troop_select.team_nb][app.troop_select.id].cast_fn.len {
+				app.id_capa_select = action
+			}
+		}
+	}
+}
+
+// UNITS /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 fn (mut app App) check_unit_interaction() {
 	if app.playing && !app.in_waiting_screen {
 		coo_x, coo_y := app.get_mouse_pos_hexa()
@@ -513,59 +542,6 @@ fn (mut app App) units_interactions(coo_x int, coo_y int) {
 	}
 }
 
-
-fn (mut app App) check_dead_troops() {
-	for x in 0 .. app.world_map.len {
-		for y in 0 .. app.world_map[x].len {
-			mut new_list := []Hexa_tile{}
-			for i, mut troop in app.world_map[x][y] {
-				if i == 0 {
-					new_list << troop
-				} else {
-					match mut troop {
-						Troops {
-							if !app.rule.team.permanent[troop.team_nb][troop.id].is_ended {
-								new_list << troop
-							}
-						}
-						else {}
-					}
-				}
-			}
-			app.world_map[x][y] = new_list
-		}
-	}
-}
-
-fn (app App) get_mouse_pos_hexa() (int, int) {
-	coo_x, coo_y := hexagons.coo_ortho_to_hexa_x(app.ctx.mouse_pos_x / app.radius, app.ctx.mouse_pos_y / app.radius,
-		app.world_map.len + app.dec_x, app.world_map[0].len + app.dec_y)
-	return coo_x - app.dec_x, coo_y - app.dec_y
-}
-
-// actions for the player
-fn cam_move(mut app Appli, move_x int, move_y int) {
-	if mut app is App {
-		if !app.changing_options {
-			app.dec_x += move_x
-			app.dec_y += move_y
-		}
-	}
-}
-
-fn capa_short_cut(mut app Appli, action int) {
-	if mut app is App {
-		if !app.changing_options {
-			if app.id_capa_select == action {
-				app.id_capa_select = idle_capa_select
-			} else if action < app.rule.team.permanent[app.troop_select.team_nb][app.troop_select.id].cast_fn.len {
-				app.id_capa_select = action
-			}
-		}
-	}
-}
-
-// UNITS /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 fn (app App) units_render(transparency u8) {
 	// units
 	for coo_x in 0 .. app.world_map.len {
@@ -603,6 +579,28 @@ mut:
 }
 
 // Units -> capas.Spell
+fn (mut app App) check_dead_troops() {
+	for x in 0 .. app.world_map.len {
+		for y in 0 .. app.world_map[x].len {
+			mut new_list := []Hexa_tile{}
+			for i, mut troop in app.world_map[x][y] {
+				if i == 0 {
+					new_list << troop
+				} else {
+					match mut troop {
+						Troops {
+							if !app.rule.team.permanent[troop.team_nb][troop.id].is_ended {
+								new_list << troop
+							}
+						}
+						else {}
+					}
+				}
+			}
+			app.world_map[x][y] = new_list
+		}
+	}
+}
 
 fn (troop Troops) render(ctx gg.Context, radius f32, pos_x f32, pos_y f32, transparency u8, app App) {
 	ctx.draw_circle_filled(pos_x, pos_y, radius - 10, attenuation(troop.color, transparency))
