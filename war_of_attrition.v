@@ -348,6 +348,35 @@ fn waiting_screen_render(app App) {
 }
 
 // In game fn: ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Placements turns:
+fn (mut app App) check_placement() {
+	if app.playing && !app.in_waiting_screen && !app.buttons_list[2].check(mut app) {
+		coo_x, coo_y := app.get_mouse_pos_hexa()
+
+		if coo_x >= 0 && coo_y >= 0 && app.check_placement_possible(coo_x, coo_y) {
+			if app.rule.team.hand[app.team_turn].len > 0 && app.world_map[coo_x][coo_y].len < 2 {
+				app.world_map[coo_x][coo_y] << [
+					Troops{
+						name:    app.rule.team.hand[app.team_turn][app.rule.team.hand[app.team_turn].len - 1].name
+						color:   app.player_color[app.team_turn]
+						team_nb: app.team_turn
+						id:      app.rule.team.next_id(app.team_turn)
+					},
+				]
+				app.rule.play_ordered(app.team_turn, 1)
+			}
+		}
+	}
+}
+
+fn (app App) check_placement_possible(coo_x int, coo_y int) bool {
+	boundaries := app.placement_boundaries[app.team_turn]
+	return boundaries[0] <= coo_x && coo_x < boundaries[1] && boundaries[2] <= coo_y
+		&& coo_y < boundaries[3]
+}
+
+// Game:
 fn (mut app App) game() {
 	if app.in_waiting_screen {
 		waiting_screen_render(app)
@@ -365,35 +394,6 @@ fn (mut app App) turn() {
 	} else {
 		app.team_turn -= 1
 	}
-}
-
-fn (mut app App) check_dead_troops() {
-	for x in 0 .. app.world_map.len {
-		for y in 0 .. app.world_map[x].len {
-			mut new_list := []Hexa_tile{}
-			for i, mut troop in app.world_map[x][y] {
-				if i == 0 {
-					new_list << troop
-				} else {
-					match mut troop {
-						Troops {
-							if !app.rule.team.permanent[troop.team_nb][troop.id].is_ended {
-								new_list << troop
-							}
-						}
-						else {}
-					}
-				}
-			}
-			app.world_map[x][y] = new_list
-		}
-	}
-}
-
-fn (app App) get_mouse_pos_hexa() (int, int) {
-	coo_x, coo_y := hexagons.coo_ortho_to_hexa_x(app.ctx.mouse_pos_x / app.radius, app.ctx.mouse_pos_y / app.radius,
-		app.world_map.len + app.dec_x, app.world_map[0].len + app.dec_y)
-	return coo_x - app.dec_x, coo_y - app.dec_y
 }
 
 // RENDERING:
@@ -466,32 +466,6 @@ fn (app App) pv_render(transparency u8) {
 }
 
 // Logic:
-fn (mut app App) check_placement() {
-	if app.playing && !app.in_waiting_screen && !app.buttons_list[2].check(mut app) {
-		coo_x, coo_y := app.get_mouse_pos_hexa()
-
-		if coo_x >= 0 && coo_y >= 0 && app.check_placement_possible(coo_x, coo_y) {
-			if app.rule.team.hand[app.team_turn].len > 0 && app.world_map[coo_x][coo_y].len < 2 {
-				app.world_map[coo_x][coo_y] << [
-					Troops{
-						name:    app.rule.team.hand[app.team_turn][app.rule.team.hand[app.team_turn].len - 1].name
-						color:   app.player_color[app.team_turn]
-						team_nb: app.team_turn
-						id:      app.rule.team.next_id(app.team_turn)
-					},
-				]
-				app.rule.play_ordered(app.team_turn, 1)
-			}
-		}
-	}
-}
-
-fn (app App) check_placement_possible(coo_x int, coo_y int) bool {
-	boundaries := app.placement_boundaries[app.team_turn]
-	return boundaries[0] <= coo_x && coo_x < boundaries[1] && boundaries[2] <= coo_y
-		&& coo_y < boundaries[3]
-}
-
 fn (mut app App) check_unit_interaction() {
 	if app.playing && !app.in_waiting_screen {
 		coo_x, coo_y := app.get_mouse_pos_hexa()
@@ -537,6 +511,36 @@ fn (mut app App) units_interactions(coo_x int, coo_y int) {
 		}
 		app.check_dead_troops()
 	}
+}
+
+
+fn (mut app App) check_dead_troops() {
+	for x in 0 .. app.world_map.len {
+		for y in 0 .. app.world_map[x].len {
+			mut new_list := []Hexa_tile{}
+			for i, mut troop in app.world_map[x][y] {
+				if i == 0 {
+					new_list << troop
+				} else {
+					match mut troop {
+						Troops {
+							if !app.rule.team.permanent[troop.team_nb][troop.id].is_ended {
+								new_list << troop
+							}
+						}
+						else {}
+					}
+				}
+			}
+			app.world_map[x][y] = new_list
+		}
+	}
+}
+
+fn (app App) get_mouse_pos_hexa() (int, int) {
+	coo_x, coo_y := hexagons.coo_ortho_to_hexa_x(app.ctx.mouse_pos_x / app.radius, app.ctx.mouse_pos_y / app.radius,
+		app.world_map.len + app.dec_x, app.world_map[0].len + app.dec_y)
+	return coo_x - app.dec_x, coo_y - app.dec_y
 }
 
 // actions for the player
