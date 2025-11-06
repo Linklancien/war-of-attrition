@@ -531,7 +531,6 @@ fn (mut app App) units_interactions(coo_x int, coo_y int) {
 		app.in_selection = false
 
 		for team in 0 .. app.player_nb {
-			println(app.rule.team.permanent[team])
 			app.rule.marks_list[base.id_pv].do_effect(mut app.rule.team.permanent[team])
 		}
 		app.check_dead_troops()
