@@ -5,7 +5,7 @@
     "cast_fn":    ["MVT", "Cut"],
 
 	"initiliazed_mark": {
-        "PV": 10,
+        "PV": 5,
         "MVT": 10,
         "ACTION POINTS": 1
     }

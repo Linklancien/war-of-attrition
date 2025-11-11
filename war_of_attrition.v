@@ -7,7 +7,7 @@ import gg { KeyCode }
 import math.vec { Vec2 }
 import json
 import linklancien.capas { Mark_config, Rules, Spell, Spell_const, Spell_fn, Spell_interface }
-import linklacien.capas.base
+import linklancien.capas.base
 
 const bg_color = gg.Color{0, 0, 0, 255}
 const font_path = os.resource_abs_path('FontMono.ttf')
@@ -58,6 +58,7 @@ mut:
 
 	//
 	in_selection   bool
+	keep_selected  bool
 	pos_select_x   int
 	pos_select_y   int
 	troop_select   Troops
@@ -104,34 +105,6 @@ fn main() {
 
 	// run the window
 	app.ctx.run()
-}
-
-fn on_init(mut app App) {
-	app.buttons_initialistation()
-	app.actions_initialistation()
-	app.rule = base.init_rule_base(app.player_nb, capas.Deck_type.dead_array)
-
-	app.rule.add_mark(Mark_config{
-		name:        'MVT'
-		description: 'Count by how many the unit have move this turn'
-		effect:      mvt_effect
-	}, Mark_config{
-		name:        'ACTION POINTS'
-		description: 'Count many action this unit can do this turn'
-		effect:      action_points_effect
-	}, Mark_config{
-		name:        'SUMMON POINTS'
-		description: 'Count many summon this unit can do'
-		// effect:      summon_points_effect
-	})
-
-	for i in 0 .. 2 {
-		app.rule.add_spell(i, app.map_unit_exist['Tank'], app.map_unit_exist['Healer'],
-			app.map_unit_exist['Toxic Soldier'], app.map_unit_exist['Grenade Soldier'],
-			app.map_unit_exist['Summoner'])
-		app.rule.draw(i, 5)
-	}
-	// Need to delet / put in the grave_yard all unit not placed
 }
 
 fn on_frame(mut app App) {
@@ -262,6 +235,34 @@ fn (mut app App) images_load() {
 }
 
 // INIT:
+fn on_init(mut app App) {
+	app.buttons_initialistation()
+	app.actions_initialistation()
+	app.rule = base.init_rule_base(app.player_nb, capas.Deck_type.dead_array)
+
+	app.rule.add_mark(Mark_config{
+		name:        'MVT'
+		description: 'Count by how many the unit have move this turn'
+		effect:      mvt_effect
+	}, Mark_config{
+		name:        'ACTION POINTS'
+		description: 'Count many action this unit can do this turn'
+		effect:      action_points_effect
+	}, Mark_config{
+		name:        'SUMMON POINTS'
+		description: 'Count many summon this unit can do'
+		// effect:      summon_points_effect
+	})
+
+	for i in 0 .. 2 {
+		app.rule.add_spell(i, app.map_unit_exist['Tank'], app.map_unit_exist['Healer'],
+			app.map_unit_exist['Toxic Soldier'], app.map_unit_exist['Grenade Soldier'],
+			app.map_unit_exist['Summoner'])
+		app.rule.draw(i, 5)
+	}
+	// Need to delet / put in the grave_yard all unit not placed
+}
+
 fn (mut app App) buttons_initialistation() {
 	app.buttons_list << [
 		Button{
@@ -320,6 +321,8 @@ fn (mut app App) actions_initialistation() {
 			capa_short_cut(mut app, i)
 		}, capa_name[i], capa_keys[i])
 	}
+
+	app.new_action(change_keep_selected, 'Keep Selection', int(KeyCode.left_shift))
 }
 
 // main menu fn: //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -477,6 +480,18 @@ fn (app App) get_mouse_pos_hexa() (int, int) {
 	return coo_x - app.dec_x, coo_y - app.dec_y
 }
 
+fn (mut app App) replace_selected(){
+	app.world_map[app.pos_select_x][app.pos_select_y] << [
+		Troops{
+			name:    app.troop_select.name
+			color:   app.troop_select.color
+			team_nb: app.troop_select.team_nb
+			id:      app.troop_select.id
+		},
+	]
+	app.in_selection = false
+}
+
 // actions for the player
 fn cam_move(mut app Appli, move_x int, move_y int) {
 	if mut app is App {
@@ -496,6 +511,12 @@ fn capa_short_cut(mut app Appli, action int) {
 				app.id_capa_select = action
 			}
 		}
+	}
+}
+
+fn change_keep_selected(mut app Appli) {
+	if mut app is App {
+		app.keep_selected = !app.keep_selected
 	}
 }
 
@@ -529,16 +550,10 @@ fn (mut app App) units_interactions(coo_x int, coo_y int) {
 		app.rule.team.permanent[app.troop_select.team_nb][app.troop_select.id].cast_fn[app.id_capa_select].function(mut app.rule.team.permanent[app.troop_select.team_nb][app.troop_select.id], mut
 			app)
 
-		app.world_map[app.pos_select_x][app.pos_select_y] << [
-			Troops{
-				name:    app.troop_select.name
-				color:   app.troop_select.color
-				team_nb: app.troop_select.team_nb
-				id:      app.troop_select.id
-			},
-		]
+		if !app.keep_selected{
+			app.replace_selected()
+		}
 		app.id_capa_select = idle_capa_select
-		app.in_selection = false
 
 		for team in 0 .. app.player_nb {
 			app.rule.marks_list[base.id_pv].do_effect(mut app.rule.team.permanent[team])
@@ -804,15 +819,16 @@ fn (summon Summon) invocation(mut unit Spell, mut app App) {
 		// cost need to be implemented
 		cost := 1
 		if unit.marks[id_summon] >= cost {
+			unit.marks[id_summon] -= cost
 			// change the spell cst because the end_fn function ist't a cst, it depends on the summoner
 			fct := base_spell.end_fn.function
 			summon_index := app.troop_select.id
-			team_id := app.troop_select.team_id
-			new_end_fn := capas.pell_fn{
+			team_id := app.troop_select.team_nb
+			new_end_fn := Spell_fn{
 				name:     'End fn summoning'
 				function: fn [fct, summon_index, team_id, cost] (mut spell Spell, mut spell_interface Spell_interface) {
 					fct(mut spell, mut spell_interface)
-					spell_interface.team.permanent[team_id][summon_index].marks[id_summon] += cost
+					spell_interface.rule.team.permanent[team_id][summon_index].marks[id_summon] += cost
 				}
 			}
 			new_spell := Spell_const{
@@ -829,7 +845,7 @@ fn (summon Summon) invocation(mut unit Spell, mut app App) {
 			}
 			app.rule.add_spell(app.troop_select.team_nb, new_spell)
 			app.rule.draw(app.troop_select.team_nb, 1)
-			id := app.rule.team.permanent[app.troop_select.team_nb].len
+			id := app.rule.team.next_id(app.troop_select.team_nb)
 			app.rule.play_ordered(app.troop_select.team_nb, 1, mut app)
 			app.world_map[pos[0][0]][pos[0][1]] << Troops{
 				name:    new_spell.name
@@ -958,15 +974,7 @@ fn end_turn(mut app Appli) {
 
 		// reset some variables
 		if app.in_selection {
-			app.world_map[app.pos_select_x][app.pos_select_y] << [
-				Troops{
-					name:    app.troop_select.name
-					color:   app.troop_select.color
-					team_nb: app.troop_select.team_nb
-					id:      app.troop_select.id
-				},
-			]
-			app.in_selection = false
+			app.replace_selected()
 		}
 
 		app.rule.all_marks_do_effect(app.team_turn)
