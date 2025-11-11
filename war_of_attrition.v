@@ -325,6 +325,34 @@ fn (mut app App) actions_initialistation() {
 	app.new_action(change_keep_selected, 'Keep Selection', int(KeyCode.left_shift))
 }
 
+// actions for the player
+fn cam_move(mut app Appli, move_x int, move_y int) {
+	if mut app is App {
+		if !app.changing_options {
+			app.dec_x += move_x
+			app.dec_y += move_y
+		}
+	}
+}
+
+fn capa_short_cut(mut app Appli, action int) {
+	if mut app is App {
+		if !app.changing_options {
+			if app.id_capa_select == action {
+				app.id_capa_select = idle_capa_select
+			} else if action < app.rule.team.permanent[app.troop_select.team_nb][app.troop_select.id].cast_fn.len {
+				app.id_capa_select = action
+			}
+		}
+	}
+}
+
+fn change_keep_selected(mut app Appli) {
+	if mut app is App {
+		app.keep_selected = !app.keep_selected
+	}
+}
+
 // main menu fn: //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 fn main_menu_render(app App) {
 	// Main title
@@ -492,35 +520,6 @@ fn (mut app App) replace_selected(){
 	app.in_selection = false
 	app.keep_selected = false
 }
-
-// actions for the player
-fn cam_move(mut app Appli, move_x int, move_y int) {
-	if mut app is App {
-		if !app.changing_options {
-			app.dec_x += move_x
-			app.dec_y += move_y
-		}
-	}
-}
-
-fn capa_short_cut(mut app Appli, action int) {
-	if mut app is App {
-		if !app.changing_options {
-			if app.id_capa_select == action {
-				app.id_capa_select = idle_capa_select
-			} else if action < app.rule.team.permanent[app.troop_select.team_nb][app.troop_select.id].cast_fn.len {
-				app.id_capa_select = action
-			}
-		}
-	}
-}
-
-fn change_keep_selected(mut app Appli) {
-	if mut app is App {
-		app.keep_selected = !app.keep_selected
-	}
-}
-
 // UNITS /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 fn (mut app App) check_unit_interaction() {
 	if app.playing && !app.in_waiting_screen {
