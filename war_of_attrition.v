@@ -128,7 +128,7 @@ fn on_event(e &gg.Event, mut app App) {
 fn on_click(x f32, y f32, button gg.MouseButton, mut app App) {
 	if app.in_placement_turns {
 		app.check_placement()
-	} else {
+	} else if !app.changing_options{
 		app.check_unit_interaction()
 	}
 
@@ -323,6 +323,7 @@ fn (mut app App) actions_initialistation() {
 	}
 
 	app.new_action(change_keep_selected, 'Keep Selection', int(KeyCode.left_shift))
+	app.new_action(deselection, 'Deselection', int(KeyCode.tab))
 }
 
 // actions for the player
@@ -350,6 +351,12 @@ fn capa_short_cut(mut app Appli, action int) {
 fn change_keep_selected(mut app Appli) {
 	if mut app is App {
 		app.keep_selected = !app.keep_selected
+	}
+}
+
+fn deselection(mut app Appli){
+	if mut app is App {
+		app.replace_selected()
 	}
 }
 
