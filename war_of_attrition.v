@@ -7,14 +7,15 @@ import gg { KeyCode }
 import math.vec { Vec2 }
 import json
 import linklancien.capas { Mark_config, Rules, Spell, Spell_const, Spell_fn, Spell_interface }
-import linklancien.capas.base
+import linklacien.capas.base
 
 const bg_color = gg.Color{0, 0, 0, 255}
 const font_path = os.resource_abs_path('FontMono.ttf')
 
 // Not perfect
-const id_mvt = 6
-const id_action_point = 7
+const id_mvt = base.id_poison + 1
+const id_action_point = id_mvt + 1
+const id_summon = id_action_point + 1
 
 const idle_capa_select = 0
 
@@ -118,6 +119,10 @@ fn on_init(mut app App) {
 		name:        'ACTION POINTS'
 		description: 'Count many action this unit can do this turn'
 		effect:      action_points_effect
+	}, Mark_config{
+		name:        'SUMMON POINTS'
+		description: 'Count many summon this unit can do'
+		// effect:      summon_points_effect
 	})
 
 	for i in 0 .. 2 {
@@ -364,7 +369,7 @@ fn (mut app App) check_placement() {
 						id:      app.rule.team.next_id(app.team_turn)
 					},
 				]
-				app.rule.play_ordered(app.team_turn, 1)
+				app.rule.play_ordered(app.team_turn, 1, mut app)
 			}
 		}
 	}
@@ -405,7 +410,7 @@ fn game_render(app App) {
 	mut path := [][]int{}
 	if app.in_selection && app.team_turn == app.troop_select.team_nb {
 		action := app.rule.team.permanent[app.troop_select.team_nb][app.troop_select.id].cast_fn[app.id_capa_select]
-		if action != capas.null_spell_fn{
+		if action != capas.null_spell_fn {
 			path = app.map_action_exist[action.name].previsualisation(app)
 		}
 	}
@@ -685,7 +690,7 @@ fn (action Actions) use(mut unit Spell, mut app App) {
 			attack.fire(mut app)
 		}
 		for summon in action.summons {
-			summon.invocation(mut app)
+			summon.invocation(mut unit, mut app)
 		}
 	}
 }
@@ -790,21 +795,48 @@ struct Summon {
 	sum_name string @[required]
 }
 
-fn (summon Summon) invocation(mut app App) {
+fn (summon Summon) invocation(mut unit Spell, mut app App) {
 	pos := summon.forme(app)
 	assert pos.len == 1, '${pos}'
 	assert pos[0].len == 2, '${pos}'
 	if app.world_map[pos[0][0]][pos[0][1]].len < 2 {
-		new_spell := app.map_unit_exist[summon.sum_name]
-		app.rule.add_spell(app.troop_select.team_nb, new_spell)
-		app.rule.draw(app.troop_select.team_nb, 1)
-		id := app.rule.team.permanent[app.troop_select.team_nb].len
-		app.rule.play_ordered(app.troop_select.team_nb, 1)
-		app.world_map[pos[0][0]][pos[0][1]] << Troops{
-			name:    new_spell.name
-			color:   app.troop_select.color
-			team_nb: app.troop_select.team_nb
-			id:      id
+		base_spell := app.map_unit_exist[summon.sum_name]
+		// cost need to be implemented
+		cost := 1
+		if unit.marks[id_summon] >= cost {
+			// change the spell cst because the end_fn function ist't a cst, it depends on the summoner
+			fct := base_spell.end_fn.function
+			summon_index := app.troop_select.id
+			team_id := app.troop_select.team_id
+			new_end_fn := capas.pell_fn{
+				name:     'End fn summoning'
+				function: fn [fct, summon_index, team_id, cost] (mut spell Spell, mut spell_interface Spell_interface) {
+					fct(mut spell, mut spell_interface)
+					spell_interface.team.permanent[team_id][summon_index].marks[id_summon] += cost
+				}
+			}
+			new_spell := Spell_const{
+				// UI
+				name:        base_spell.name
+				description: base_spell.description
+
+				on_cast_fn: base_spell.on_cast_fn
+				cast_fn:    base_spell.cast_fn
+				end_fn:     new_end_fn
+
+				// 1:
+				initiliazed_mark: base_spell.initiliazed_mark
+			}
+			app.rule.add_spell(app.troop_select.team_nb, new_spell)
+			app.rule.draw(app.troop_select.team_nb, 1)
+			id := app.rule.team.permanent[app.troop_select.team_nb].len
+			app.rule.play_ordered(app.troop_select.team_nb, 1, mut app)
+			app.world_map[pos[0][0]][pos[0][1]] << Troops{
+				name:    new_spell.name
+				color:   app.troop_select.color
+				team_nb: app.troop_select.team_nb
+				id:      id
+			}
 		}
 	}
 }
@@ -939,7 +971,7 @@ fn end_turn(mut app Appli) {
 
 		app.rule.all_marks_do_effect(app.team_turn)
 		app.check_dead_troops()
-		app.rule.team.update_permanent()
+		app.rule.team.update_permanent(mut app)
 
 		app.id_capa_select = idle_capa_select
 		app.in_waiting_screen = true
