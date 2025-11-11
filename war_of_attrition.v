@@ -490,6 +490,7 @@ fn (mut app App) replace_selected(){
 		},
 	]
 	app.in_selection = false
+	app.keep_selected = false
 }
 
 // actions for the player
@@ -640,7 +641,8 @@ fn (troop Troops) stats_render(ctx gg.Context, app App, transparency u8) {
 	Pv: ${unit.marks[base.id_pv]}/${unit.initiliazed_mark['PV']}
 	Mouvements: ${unit.marks[id_mvt]}/${unit.initiliazed_mark['MVT']}
 	Status: ${unit.marks}
-	Actions: ${app.id_capa_select}/${unit.cast_fn.len - 1}'
+	Actions: ${app.id_capa_select}/${unit.cast_fn.len - 1}
+	Will be keept selected: ${app.keep_selected}'
 	if unit.marks[id_action_point] <= 0 {
 		txt += ' \nCapa already used'
 	}
